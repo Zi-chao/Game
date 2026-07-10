@@ -2,6 +2,7 @@ export type Page =
   | 'home'
   | 'single-mode'
   | 'versus-mode'
+  | 'board-games'
   | 'snake'
   | 'tetris'
   | 'plane'
@@ -10,7 +11,11 @@ export type Page =
   | 'memory'
   | 'hop'
   | 'gomoku'
-  | 'plumber'
+  | 'othello'
+  | 'tictactoe'
+  | 'connectfour'
+  | 'xiangqi'
+  | 'chess'
   | 'snake-versus'
   | 'plane-versus'
   | 'pong';
@@ -169,7 +174,8 @@ export interface HopState {
 }
 
 // 五子棋
-export type CellValue = 0 | 1 | 2; // 0=空, 1=黑(玩家), 2=白(AI)
+export type CellValue = 0 | 1 | 2; // 0=空, 1=黑, 2=白
+export type GomokuMode = 'pve' | 'pvp';
 
 export interface GomokuState {
   board: CellValue[][];
@@ -177,31 +183,50 @@ export interface GomokuState {
   winner: 0 | 1 | 2 | null;
   status: 'playing' | 'won' | 'draw';
   moves: number;
+  mode: GomokuMode;
 }
 
-// 接水管
-export type PipeType = 'empty' | 'straight' | 'corner' | 'cross' | 't_junction' | 'end';
+// 奥赛罗（黑白棋）
+export type OthelloCell = 0 | 1 | 2; // 0=空, 1=黑, 2=白
+export type OthelloMode = 'pve' | 'pvp';
 
-export interface PlumberCell {
-  type: PipeType;
-  rotation: number; // 0, 90, 180, 270
-  isSource?: boolean;
-  isTarget?: boolean;
-  connected?: boolean;
+export interface OthelloMove {
+  row: number;
+  col: number;
+  flips: Array<[number, number]>;
 }
 
-export interface PlumberLevel {
-  grid: PlumberCell[][];
-  sourcePos: { row: number; col: number };
-  targetPos: { row: number; col: number };
+export interface OthelloState {
+  board: OthelloCell[][];
+  currentPlayer: 1 | 2;
+  mode: OthelloMode;
+  blackScore: number;
+  whiteScore: number;
+  validMoves: OthelloMove[];
+  status: 'playing' | 'won' | 'draw';
+  lastPass: boolean;
 }
 
-export interface PlumberState {
-  level: PlumberLevel;
-  levelIndex: number;
-  status: 'playing' | 'won';
-  moves: number;
-  bestMoves: number;
+// 三连棋（井字棋）
+export type TicTacToeState = {
+  board: OthelloCell[];
+  currentPlayer: 1 | 2;
+  mode: OthelloMode;
+  winner: 0 | 1 | 2 | null;
+  status: 'playing' | 'won' | 'draw';
+  winningLine: number[] | null;
+};
+
+// 四子棋（Connect Four）
+export type ConnectFourCell = 0 | 1 | 2;
+
+export interface ConnectFourState {
+  board: ConnectFourCell[][]; // 6行 x 7列
+  currentPlayer: 1 | 2;
+  mode: OthelloMode;
+  winner: 0 | 1 | 2 | null;
+  status: 'playing' | 'won' | 'draw';
+  winningCells: Array<{ row: number; col: number }> | null;
 }
 
 // 双人重力小球

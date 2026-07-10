@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { GomokuState } from '../types/game';
+import { GomokuState, GomokuMode } from '../types/game';
 import { createEmptyBoard, checkWin, findBestMove } from '../utils/gomokuUtils';
 
 const HIGH_SCORE_KEY = 'gomoku_best';
@@ -20,41 +20,49 @@ export const useGomoku = () => {
     winner: null,
     status: 'playing',
     moves: 0,
+    mode: 'pve',
   }));
 
   const best = getBest();
 
   const reset = useCallback(() => {
-    setState({
+    setState(prev => ({
       board: createEmptyBoard(),
       currentPlayer: 1,
       winner: null,
       status: 'playing',
       moves: 0,
-    });
+      mode: prev.mode,
+    }));
+  }, []);
+
+  const setMode = useCallback((mode: GomokuMode) => {
+    setState(prev => ({ ...prev, mode }));
   }, []);
 
   const placeStone = useCallback((row: number, col: number) => {
     setState(prev => {
       if (prev.status !== 'playing' || prev.winner !== null) return prev;
       if (prev.board[row][col] !== 0) return prev;
-      if (prev.currentPlayer !== 1) return prev; // 只有玩家1可以手动落子
 
       const newBoard = prev.board.map(r => [...r]);
-      newBoard[row][col] = 1;
+      newBoard[row][col] = prev.currentPlayer;
 
-      if (checkWin(newBoard, row, col, 1)) {
-        saveBest(best.wins + 1, best.losses);
+      if (checkWin(newBoard, row, col, prev.currentPlayer)) {
+        if (prev.mode === 'pve' && prev.currentPlayer === 1) {
+          saveBest(best.wins + 1, best.losses);
+        } else if (prev.mode === 'pve' && prev.currentPlayer === 2) {
+          saveBest(best.wins, best.losses + 1);
+        }
         return {
           ...prev,
           board: newBoard,
-          winner: 1,
+          winner: prev.currentPlayer,
           status: 'won',
           moves: prev.moves + 1,
         };
       }
 
-      // 检查平局
       if (prev.moves + 1 >= 15 * 15) {
         return {
           ...prev,
@@ -68,19 +76,18 @@ export const useGomoku = () => {
       return {
         ...prev,
         board: newBoard,
-        currentPlayer: 2,
+        currentPlayer: prev.currentPlayer === 1 ? 2 : 1,
         moves: prev.moves + 1,
       };
     });
   }, [best]);
 
-  // AI 自动落子
   useEffect(() => {
-    if (state.status === 'playing' && state.currentPlayer === 2 && state.winner === null) {
+    if (state.mode === 'pve' && state.status === 'playing' && state.currentPlayer === 2 && state.winner === null) {
       const timer = setTimeout(() => {
         const { row, col } = findBestMove(state.board, 2);
         setState(prev => {
-          if (prev.currentPlayer !== 2 || prev.winner !== null) return prev;
+          if (prev.mode !== 'pve' || prev.currentPlayer !== 2 || prev.winner !== null) return prev;
           if (prev.board[row][col] !== 0) return prev;
 
           const newBoard = prev.board.map(r => [...r]);
@@ -107,12 +114,13 @@ export const useGomoku = () => {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [state.currentPlayer, state.board, state.status, state.winner, best]);
+  }, [state.currentPlayer, state.board, state.status, state.winner, state.mode, best]);
 
   return {
     state,
     best,
     reset,
     placeStone,
+    setMode,
   };
 };

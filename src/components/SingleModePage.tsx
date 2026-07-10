@@ -79,24 +79,6 @@ const games: GameCard[] = [
     borderColor: 'border-fuchsia-400',
     shadowColor: 'shadow-fuchsia-500/50',
   },
-  {
-    id: 'gomoku',
-    title: '五子棋',
-    description: '人机对战AI',
-    emoji: '⚫',
-    gradient: 'from-amber-500 to-orange-700',
-    borderColor: 'border-amber-400',
-    shadowColor: 'shadow-amber-500/50',
-  },
-  {
-    id: 'plumber',
-    title: '接水管',
-    description: '管道连接益智',
-    emoji: '🔧',
-    gradient: 'from-cyan-500 to-blue-700',
-    borderColor: 'border-cyan-400',
-    shadowColor: 'shadow-cyan-500/50',
-  },
 ];
 
 export const SingleModePage = ({ onSelectGame, onBack }: SingleModePageProps) => {
@@ -119,10 +101,10 @@ export const SingleModePage = ({ onSelectGame, onBack }: SingleModePageProps) =>
           <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 mb-3">
             🎯 单人模式
           </h1>
-          <p className="text-slate-300 text-base md:text-lg">选择一款游戏开始挑战（9款）</p>
+          <p className="text-slate-300 text-base md:text-lg">选择一款游戏开始挑战（7款）</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {games.map(game => (
             <button
               key={game.id}

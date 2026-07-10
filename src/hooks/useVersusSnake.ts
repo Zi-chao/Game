@@ -124,16 +124,20 @@ export const useVersusSnake = () => {
       let score1 = prev.score1;
       let score2 = prev.score2;
 
-      // 检测碰撞
-      const s1Wall = checkWallCollision(snake1[0]);
+      // 检测碰撞：蛇头相撞也算死亡（不能穿过）
+      const s1Head = snake1[0];
+      const s2Head = snake2[0];
+      const s1Wall = checkWallCollision(s1Head);
       const s1Self = checkSelfCollision(snake1);
-      const s1HitS2 = checkBodyCollision(snake1, prev.snake2);
-      const s2Wall = checkWallCollision(snake2[0]);
+      const s1HitS2Body = checkBodyCollision(snake1, prev.snake2.slice(1));
+      const s1HeadHitS2Head = s1Head.x === s2Head.x && s1Head.y === s2Head.y;
+      const s2Wall = checkWallCollision(s2Head);
       const s2Self = checkSelfCollision(snake2);
-      const s2HitS1 = checkBodyCollision(snake2, prev.snake1);
+      const s2HitS1Body = checkBodyCollision(snake2, prev.snake1.slice(1));
+      const s2HeadHitS1Head = s1HeadHitS2Head;
 
-      const s1Dead = s1Wall || s1Self || s1HitS2;
-      const s2Dead = s2Wall || s2Self || s2HitS1;
+      const s1Dead = s1Wall || s1Self || s1HitS2Body || s1HeadHitS2Head;
+      const s2Dead = s2Wall || s2Self || s2HitS1Body || s2HeadHitS1Head;
 
       if (s1Dead || s2Dead) {
         let winner: 0 | 1 | 2 = 0;
@@ -160,14 +164,15 @@ export const useVersusSnake = () => {
       }
 
       let food = prev.food;
-      // 玩家1吃食物
-      if (snake1[0].x === food.x && snake1[0].y === food.y) {
+      const s1EatFood = snake1[0].x === food.x && snake1[0].y === food.y;
+      const s2EatFood = snake2[0].x === food.x && snake2[0].y === food.y;
+      // 蛇头相撞时位置重叠，不吃食物
+      if (s1EatFood && !s1HeadHitS2Head) {
         snake1 = growSnakeAt(snake1);
         score1 += 1;
         food = getRandomVersusFood(snake1, snake2);
       }
-      // 玩家2吃食物
-      else if (snake2[0].x === food.x && snake2[0].y === food.y) {
+      if (s2EatFood && !s2HeadHitS1Head) {
         snake2 = growSnakeAt(snake2);
         score2 += 1;
         food = getRandomVersusFood(snake1, snake2);

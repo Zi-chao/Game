@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useVersusSnake } from '../hooks/useVersusSnake';
 import { VERSUS_GRID_SIZE, VERSUS_CELL_SIZE } from '../utils/versusUtils';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface VersusSnakeGameProps {
   onBack: () => void;
 }
 
 export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
-  const { state, best, start, reset, togglePause, changeDirection1, changeDirection2 } = useVersusSnake();
+  const { state, start, reset, togglePause, changeDirection1, changeDirection2 } = useVersusSnake();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -90,33 +91,28 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
+      <OrientationPrompt />
       <button
         onClick={onBack}
-        className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
+        className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
       >
-        ← 返回首页
+        ← 返回
       </button>
 
-      <h1 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-3 mt-8">
+      <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-6 md:mt-8">
         🐍 贪吃蛇对战
       </h1>
 
       {/* 分数面板 */}
-      <div className="flex gap-4 mb-3">
-        <div className="bg-emerald-900/40 border-2 border-emerald-500 rounded-xl px-5 py-2">
-          <div className="text-emerald-300 text-xs">🟢 玩家1 (WASD)</div>
-          <div className="text-3xl font-bold text-emerald-400 font-mono">{state.score1}</div>
-          {best.p1 > 0 && (
-            <div className="text-emerald-500 text-xs">最高: {best.p1}</div>
-          )}
+      <div className="flex gap-2 md:gap-4 mb-2 md:mb-3">
+        <div className="bg-emerald-900/40 border-2 border-emerald-500 rounded-xl px-3 py-1.5 md:px-5 md:py-2">
+          <div className="text-emerald-300 text-xs">🟢 玩家1</div>
+          <div className="text-2xl md:text-3xl font-bold text-emerald-400 font-mono">{state.score1}</div>
         </div>
-        <div className="bg-blue-900/40 border-2 border-blue-500 rounded-xl px-5 py-2">
-          <div className="text-blue-300 text-xs">🔵 玩家2 (方向键)</div>
-          <div className="text-3xl font-bold text-blue-400 font-mono">{state.score2}</div>
-          {best.p2 > 0 && (
-            <div className="text-blue-500 text-xs">最高: {best.p2}</div>
-          )}
+        <div className="bg-blue-900/40 border-2 border-blue-500 rounded-xl px-3 py-1.5 md:px-5 md:py-2">
+          <div className="text-blue-300 text-xs">🔵 玩家2</div>
+          <div className="text-2xl md:text-3xl font-bold text-blue-400 font-mono">{state.score2}</div>
         </div>
       </div>
 
@@ -125,7 +121,8 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
           ref={canvasRef}
           width={VERSUS_GRID_SIZE * VERSUS_CELL_SIZE}
           height={VERSUS_GRID_SIZE * VERSUS_CELL_SIZE}
-          className="rounded-lg shadow-2xl border-4 border-emerald-700"
+          className="rounded-lg shadow-2xl border-2 md:border-4 border-emerald-700 max-w-full"
+          style={{ maxHeight: '60vh', height: 'auto' }}
         />
 
         {(state.winner !== null || !state.isPlaying) && (
@@ -181,65 +178,65 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
         )}
       </div>
 
-      {/* 移动端控制 - 玩家1 */}
-      <div className="mt-4 grid grid-cols-2 gap-4 md:hidden">
-        <div>
-          <div className="text-xs text-emerald-300 text-center mb-1">玩家1</div>
-          <div className="grid grid-cols-3 gap-1 w-24 mx-auto">
+      {/* 移动端控制 - 左右分布 */}
+      <div className="md:hidden w-full mt-3 flex justify-between items-start px-3 select-none">
+        <div className="flex flex-col items-center">
+          <div className="text-xs text-emerald-300 mb-1">🟢 玩家1</div>
+          <div className="grid grid-cols-3 gap-1.5">
             <div></div>
             <button
-              onClick={() => changeDirection1('UP')}
-              className="aspect-square bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection1('UP'); }}
+              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               W
             </button>
             <div></div>
             <button
-              onClick={() => changeDirection1('LEFT')}
-              className="aspect-square bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection1('LEFT'); }}
+              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               A
             </button>
             <button
-              onClick={() => changeDirection1('DOWN')}
-              className="aspect-square bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection1('DOWN'); }}
+              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               S
             </button>
             <button
-              onClick={() => changeDirection1('RIGHT')}
-              className="aspect-square bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection1('RIGHT'); }}
+              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               D
             </button>
           </div>
         </div>
-        <div>
-          <div className="text-xs text-blue-300 text-center mb-1">玩家2</div>
-          <div className="grid grid-cols-3 gap-1 w-24 mx-auto">
+        <div className="flex flex-col items-center">
+          <div className="text-xs text-blue-300 mb-1">🔵 玩家2</div>
+          <div className="grid grid-cols-3 gap-1.5">
             <div></div>
             <button
-              onClick={() => changeDirection2('UP')}
-              className="aspect-square bg-blue-700 hover:bg-blue-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('UP'); }}
+              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               ↑
             </button>
             <div></div>
             <button
-              onClick={() => changeDirection2('LEFT')}
-              className="aspect-square bg-blue-700 hover:bg-blue-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('LEFT'); }}
+              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               ←
             </button>
             <button
-              onClick={() => changeDirection2('DOWN')}
-              className="aspect-square bg-blue-700 hover:bg-blue-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('DOWN'); }}
+              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               ↓
             </button>
             <button
-              onClick={() => changeDirection2('RIGHT')}
-              className="aspect-square bg-blue-700 hover:bg-blue-600 text-white rounded font-bold"
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('RIGHT'); }}
+              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
             >
               →
             </button>

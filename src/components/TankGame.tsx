@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTankGame } from '../hooks/useTankGame';
+import { OrientationPrompt } from './OrientationPrompt';
 import {
   TILE_SIZE,
   TANK_SIZE,
@@ -51,7 +52,7 @@ const drawTank = (
 };
 
 export const TankGame = ({ onBack }: TankGameProps) => {
-  const { gameState, map, requiredKills, killCount, start, reset } = useTankGame();
+  const { gameState, map, requiredKills, killCount, start, reset, setMobileMove } = useTankGame();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -126,12 +127,13 @@ export const TankGame = ({ onBack }: TankGameProps) => {
   }, [gameState, map]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
+      <OrientationPrompt />
       <button
         onClick={onBack}
-        className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
+        className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
       >
-        ← 返回首页
+        ← 返回
       </button>
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-600 mb-4 mt-8">
@@ -199,9 +201,63 @@ export const TankGame = ({ onBack }: TankGameProps) => {
         )}
       </div>
 
-      <div className="mt-4 text-slate-400 text-xs text-center">
+      <div className="hidden md:block mt-3 text-slate-400 text-xs text-center">
         <p>← → ↑ ↓ 移动 | 空格/J 射击 | Enter 开始/重玩</p>
       </div>
+
+      {/* 移动端控制 */}
+      {gameState.status === 'playing' && (
+        <div className="md:hidden w-full mt-3 px-3 select-none">
+          <div className="flex items-center justify-between gap-2">
+            {/* 移动方向 */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <div></div>
+              <button
+                onTouchStart={(e) => { e.preventDefault(); setMobileMove('up', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('up', false); }}
+                onTouchCancel={() => setMobileMove('up', false)}
+                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
+              >
+                ↑
+              </button>
+              <div></div>
+              <button
+                onTouchStart={(e) => { e.preventDefault(); setMobileMove('left', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('left', false); }}
+                onTouchCancel={() => setMobileMove('left', false)}
+                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
+              >
+                ←
+              </button>
+              <button
+                onTouchStart={(e) => { e.preventDefault(); setMobileMove('down', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('down', false); }}
+                onTouchCancel={() => setMobileMove('down', false)}
+                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
+              >
+                ↓
+              </button>
+              <button
+                onTouchStart={(e) => { e.preventDefault(); setMobileMove('right', true); }}
+                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('right', false); }}
+                onTouchCancel={() => setMobileMove('right', false)}
+                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
+              >
+                →
+              </button>
+            </div>
+            {/* 射击按钮 */}
+            <button
+              onTouchStart={(e) => { e.preventDefault(); setMobileMove('shoot', true); }}
+              onTouchEnd={(e) => { e.preventDefault(); setMobileMove('shoot', false); }}
+              onTouchCancel={() => setMobileMove('shoot', false)}
+              className="w-20 h-20 bg-red-600 active:bg-red-500 text-white text-lg rounded-full font-bold touch-none"
+            >
+              🔥 射击
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -21,12 +21,20 @@ export const generateMap = (): number[][] => {
     }
   }
 
+  // 敌人出生点（左右上方）必须为空地
+  map[1][1] = TILE_EMPTY;
+  map[1][MAP_COLS - 2] = TILE_EMPTY;
+  map[2][1] = TILE_EMPTY;
+  map[2][MAP_COLS - 2] = TILE_EMPTY;
+
   // 随机砖墙
   for (let r = 1; r < MAP_ROWS - 1; r++) {
     for (let c = 1; c < MAP_COLS - 1; c++) {
       // 玩家起点和基地周围留空
       if ((r === 1 || r === 2) && c >= 6 && c <= 8) continue;
       if (r >= MAP_ROWS - 3 && c >= 6 && c <= 8) continue;
+      // 敌人出生点留空
+      if ((r === 1 || r === 2) && (c === 1 || c === MAP_COLS - 2)) continue;
       if (Math.random() < 0.35) {
         map[r][c] = TILE_BRICK;
       }
@@ -53,6 +61,8 @@ export const generateMap = (): number[][] => {
   for (let i = 0; i < 4; i++) {
     const r = 2 + Math.floor(Math.random() * (MAP_ROWS - 4));
     const c = 1 + Math.floor(Math.random() * (MAP_COLS - 2));
+    // 敌人出生点周围不生成钢墙
+    if ((r === 1 || r === 2) && (c === 1 || c === MAP_COLS - 2)) continue;
     if (map[r][c] === 0) {
       map[r][c] = TILE_STEEL;
     }

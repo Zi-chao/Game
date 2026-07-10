@@ -1,47 +1,57 @@
 import { HopLevel, HopDot } from '../types/game';
 
-// 跳棋关卡设计 - 类似"一笔画"跳棋，棋子必须跳遍所有点
-// 玩法：棋子只能斜向或直线跳到下一个空格
-export const HOP_LEVELS: HopLevel[] = [
-  {
-    name: '第1关',
-    startRow: 4,
-    startCol: 4,
-    dots: [
-      { row: 4, col: 4 }, { row: 4, col: 3 }, { row: 4, col: 5 },
-      { row: 3, col: 4 }, { row: 5, col: 4 },
-      { row: 3, col: 3 }, { row: 5, col: 5 },
-    ],
-  },
-  {
-    name: '第2关',
-    startRow: 4,
-    startCol: 4,
-    dots: [
-      { row: 2, col: 3 }, { row: 2, col: 5 },
-      { row: 3, col: 2 }, { row: 3, col: 6 },
-      { row: 4, col: 4 },
-      { row: 5, col: 2 }, { row: 5, col: 6 },
-      { row: 6, col: 3 }, { row: 6, col: 5 },
-    ],
-  },
-  {
-    name: '第3关',
-    startRow: 4,
-    startCol: 4,
-    dots: [
-      { row: 1, col: 1 }, { row: 1, col: 7 },
-      { row: 2, col: 4 },
-      { row: 4, col: 1 }, { row: 4, col: 7 },
-      { row: 4, col: 4 },
-      { row: 6, col: 4 },
-      { row: 7, col: 1 }, { row: 7, col: 7 },
-    ],
-  },
-];
-
 export const HOP_GRID_SIZE = 9;
 export const HOP_CELL_SIZE = 50;
+
+// 跳棋关卡 - 随机生成保证所有点互相可达（可一笔画）
+const generateHopLevel = (numDots: number, levelName: string): HopLevel => {
+  // 中心点
+  const centerRow = Math.floor(HOP_GRID_SIZE / 2);
+  const centerCol = Math.floor(HOP_GRID_SIZE / 2);
+
+  const dots: HopDot[] = [{ row: centerRow, col: centerCol }];
+  const used = new Set<string>();
+  used.add(`${centerRow},${centerCol}`);
+
+  // 在中心周围散布点
+  let attempts = 0;
+  while (dots.length < numDots && attempts < 200) {
+    attempts++;
+    const range = 3; // 在中心 ±3 范围内随机
+    const r = centerRow + Math.floor(Math.random() * (range * 2 + 1)) - range;
+    const c = centerCol + Math.floor(Math.random() * (range * 2 + 1)) - range;
+    if (r < 0 || r >= HOP_GRID_SIZE || c < 0 || c >= HOP_GRID_SIZE) continue;
+    const k = `${r},${c}`;
+    if (used.has(k)) continue;
+    // 至少要有一个方向（水平/垂直/对角）能跳到中心
+    const dr = Math.abs(r - centerRow);
+    const dc = Math.abs(c - centerCol);
+    const validJump =
+      dr === 0 || dc === 0 || dr === dc;
+    if (!validJump) continue;
+    used.add(k);
+    dots.push({ row: r, col: c });
+  }
+
+  return {
+    name: levelName,
+    dots,
+    startRow: centerRow,
+    startCol: centerCol,
+  };
+};
+
+// 预生成一批可玩关卡
+const generateAllLevels = (): HopLevel[] => {
+  const levels: HopLevel[] = [];
+  for (let i = 0; i < 6; i++) {
+    const numDots = 7 + i * 2; // 7, 9, 11, 13, 15, 17
+    levels.push(generateHopLevel(numDots, `第${i + 1}关`));
+  }
+  return levels;
+};
+
+export const HOP_LEVELS: HopLevel[] = generateAllLevels();
 
 export const canHopTo = (
   fromRow: number,
@@ -58,7 +68,7 @@ export const canHopTo = (
   if (visited.some(v => v.row === toRow && v.col === toCol)) {
     return false;
   }
-  // 跳棋规则：水平、垂直或对角线方向，且必须跳过至少一个点
+  // 跳棋规则：水平、垂直或对角线方向
   const dRow = Math.abs(toRow - fromRow);
   const dCol = Math.abs(toCol - fromCol);
 
