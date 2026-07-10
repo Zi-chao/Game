@@ -176,6 +176,7 @@ export interface HopState {
 // 五子棋
 export type CellValue = 0 | 1 | 2; // 0=空, 1=黑, 2=白
 export type GomokuMode = 'pve' | 'pvp';
+export type AiSide = 1 | 2; // AI 执黑/执白 或 先手/后手
 
 export interface GomokuState {
   board: CellValue[][];

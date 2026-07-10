@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMemoryGame, MemoryDifficulty } from '../hooks/useMemoryGame';
 import { GRID_SIZES } from '../utils/memoryUtils';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface MemoryGameProps {
   onBack: () => void;
@@ -63,6 +64,8 @@ export const MemoryGame = ({ onBack }: MemoryGameProps) => {
       >
         ← 返回首页
       </button>
+
+      <ClearCacheButton storageKeys={['memory_best']} onCleared={() => window.location.reload()} />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-pink-600 mb-4 mt-8">
         🧠 记忆翻牌

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useTetrisGame } from '../hooks/useTetrisGame';
 import { BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, COLORS } from '../utils/tetrisUtils';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface TetrisGameProps {
   onBack: () => void;
@@ -201,6 +202,8 @@ export const TetrisGame = ({ onBack }: TetrisGameProps) => {
       >
         ← 返回首页
       </button>
+
+      <ClearCacheButton storageKeys={['tetris_high_score']} onCleared={() => window.location.reload()} />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 mt-8">
         🧩 俄罗斯方块

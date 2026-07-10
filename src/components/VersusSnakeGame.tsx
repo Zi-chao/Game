@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useVersusSnake } from '../hooks/useVersusSnake';
 import { VERSUS_GRID_SIZE, VERSUS_CELL_SIZE } from '../utils/versusUtils';
 import { OrientationPrompt } from './OrientationPrompt';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface VersusSnakeGameProps {
   onBack: () => void;
@@ -99,6 +100,8 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
       >
         ← 返回
       </button>
+
+      <ClearCacheButton storageKeys={['versus_snake_best']} onCleared={() => window.location.reload()} />
 
       {/* 玩家2控制 - 倒置显示在标题上方，按键镜像 */}
       <div className="md:hidden w-full mt-2 px-3 select-none">

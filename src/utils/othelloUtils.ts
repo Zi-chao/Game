@@ -201,7 +201,7 @@ const minimax = (
 export const aiSelectMove = (
   board: OthelloCell[][],
   moves: Array<{ row: number; col: number; flips: Array<[number, number]> }>,
-  aiPlayer: OthelloCell = 2,
+  aiPlayer: OthelloCell,
 ): { row: number; col: number; flips: Array<[number, number]> } | null => {
   if (moves.length === 0) return null;
 

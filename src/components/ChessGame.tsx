@@ -1,5 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { OthelloMode } from '../types/game';
+import { OthelloMode, AiSide } from '../types/game';
+import { AiSideSelector } from './AiSideSelector';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface ChessGameProps {
   onBack: () => void;
@@ -52,8 +54,12 @@ const getPieceSymbol = (piece: Piece): string => {
 };
 
 export const ChessGame = ({ onBack }: ChessGameProps) => {
+  // 玩家始终是白方 (color=1) 在底部, AI 始终是黑方 (color=2) 在顶部
+  // aiSide=1: AI 先手 (黑方) -> currentPlayer=2
+  // aiSide=2: 玩家先手 (白方) -> currentPlayer=1
   const [board, setBoard] = useState<(Piece | null)[][]>(createInitialBoard);
-  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
+  const [aiSide, setAiSide] = useState<AiSide>(2); // 默认玩家先手
+  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(aiSide === 1 ? 2 : 1);
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [mode, setMode] = useState<OthelloMode>(() => {
     const saved = sessionStorage.getItem('game_mode_chess') as OthelloMode | null;
@@ -85,11 +91,11 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
 
   const reset = useCallback(() => {
     setBoard(createInitialBoard());
-    setCurrentPlayer(1);
+    setCurrentPlayer(aiSide === 1 ? 2 : 1);
     setSelected(null);
     setStatus('playing');
     setWinner(0);
-  }, []);
+  }, [aiSide]);
 
   const isValidMove = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
     const piece = board[fromRow][fromCol];
@@ -158,8 +164,9 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
         }
         if (Math.abs(dc) === 1 && dr === direction && target && target.color !== currentPlayer) return true;
         return false;
+      default:
+        return false;
     }
-    return false;
   };
 
   // 计算选中棋子的所有可走位置
@@ -178,6 +185,7 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
 
   const handleCellClick = (row: number, col: number) => {
     if (status !== 'playing') return;
+    // AI 永远是 color=2, 玩家永远是 color=1
     if (mode === 'pve' && currentPlayer === 2) return;
 
     const piece = board[row][col];
@@ -250,7 +258,6 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
   };
 
   const evaluateBoardChess = (boardState: (Piece | null)[][]): number => {
-    // AI 是玩家2，所以从玩家2视角评估
     const pieceValues: Record<PieceType, number> = {
       king: 10000,
       queen: 900,
@@ -260,35 +267,31 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       pawn: 100,
     };
 
+    // AI 永远是 color=2 (黑方), 玩家永远是 color=1 (白方)
     let score = 0;
     for (let r = 0; r < BOARD_SIZE; r++) {
       for (let c = 0; c < BOARD_SIZE; c++) {
         const piece = boardState[r][c];
         if (piece) {
           const baseValue = pieceValues[piece.type];
-          // AI = color 2 为正向
-          const multiplier = piece.color === 2 ? 1 : -1;
+          const multiplier = piece.color === 2 ? 1 : -1;  // AI视角
           let positionBonus = 0;
 
-          // 位置奖励：中心化、推进
           if (piece.type === 'pawn') {
-            // 越靠近对方底线越好
-            if (piece.color === 2) positionBonus = r * 15;
-            else positionBonus = (BOARD_SIZE - 1 - r) * 15;
+            // AI (color=2) 在顶部, 向下推进 r 越大越好
+            // 玩家 (color=1) 在底部, 向上推进 r 越小越好
+            positionBonus = piece.color === 2 ? r * 15 : (BOARD_SIZE - 1 - r) * 15;
           } else if (piece.type === 'knight' || piece.type === 'bishop') {
-            // 中心化
             const centerDist = Math.abs(c - 3.5) + Math.abs(r - 3.5);
             positionBonus = (7 - centerDist) * 5;
-          } else if (piece.type === 'king') {
-            // 开局阶段王应该在后方
-            if (piece.color === 2 && r < 2) positionBonus = 20;
-            if (piece.color === 1 && r > 5) positionBonus = 20;
           }
+          // 马/象奖励中心位置
 
           score += multiplier * (baseValue + positionBonus);
         }
       }
     }
+
     return score;
   };
 
@@ -303,6 +306,7 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       return evaluateBoardChess(boardState);
     }
 
+    // AI 永远是 color=2, 玩家永远是 color=1
     const color = isMaximizing ? 2 : 1;
     const moves = getMovesForColorChess(boardState, color);
 
@@ -318,9 +322,11 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
         newBoard[move.toRow][move.toCol] = movingPiece;
         newBoard[move.fromRow][move.fromCol] = null;
 
-        // 兵升变
-        if (movingPiece?.type === 'pawn' && move.toRow === 0) {
-          newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
+        if (movingPiece?.type === 'pawn') {
+          // AI (color=2) 升变: 到 row 0
+          if (move.toRow === 0) {
+            newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
+          }
         }
 
         const score = minimaxChess(newBoard, depth - 1, false, alpha, beta);
@@ -331,15 +337,18 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       return maxEval;
     } else {
       let minEval = Infinity;
+      // 玩家永远是 color=1
       for (const move of moves) {
         const newBoard = boardState.map(r => [...r]);
         const movingPiece = newBoard[move.fromRow][move.fromCol];
         newBoard[move.toRow][move.toCol] = movingPiece;
         newBoard[move.fromRow][move.fromCol] = null;
 
-        // 兵升变
-        if (movingPiece?.type === 'pawn' && move.toRow === BOARD_SIZE - 1) {
-          newBoard[move.toRow][move.toCol] = { type: 'queen', color: 1 };
+        if (movingPiece?.type === 'pawn') {
+          // 玩家 (color=1) 升变: 到 row 7
+          if (move.toRow === BOARD_SIZE - 1) {
+            newBoard[move.toRow][move.toCol] = { type: 'queen', color: 1 };
+          }
         }
 
         const score = minimaxChess(newBoard, depth - 1, true, alpha, beta);
@@ -355,7 +364,6 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
     const moves = getAllValidMoves;
     if (moves.length === 0) return null;
 
-    // 优先吃王
     for (const move of moves) {
       const target = board[move.toRow][move.toCol];
       if (target?.type === 'king') {
@@ -363,7 +371,6 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       }
     }
 
-    // 走法排序：吃子走法优先
     const moveOrder = [...moves].sort((a, b) => {
       const targetA = board[a.toRow][a.toCol];
       const targetB = board[b.toRow][b.toCol];
@@ -382,11 +389,13 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       newBoard[move.toRow][move.toCol] = movingPiece;
       newBoard[move.fromRow][move.fromCol] = null;
 
-      // 兵升变
       let immediateScore = 0;
-      if (movingPiece?.type === 'pawn' && move.toRow === 0) {
-        newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
-        immediateScore += 800;
+      if (movingPiece?.type === 'pawn') {
+        // AI (color=2) 升变: 到 row 0
+        if (move.toRow === 0) {
+          newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
+          immediateScore += 800;
+        }
       }
 
       const captured = board[move.toRow][move.toCol];
@@ -402,9 +411,10 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
     }
 
     return bestMove;
-  }, [getAllValidMoves, board, currentPlayer]);
+  }, [getAllValidMoves, board, currentPlayer, aiSide]);
 
   useEffect(() => {
+    // AI 永远是 color=2, 玩家永远是 color=1
     if (mode === 'pve' && currentPlayer === 2 && status === 'playing') {
       const timer = setTimeout(() => {
         const move = findBestAiMove();
@@ -418,7 +428,8 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
           newBoard[move.fromRow][move.fromCol] = null;
 
           if (newBoard[move.toRow][move.toCol]?.type === 'pawn') {
-            if ((currentPlayer === 2 && move.toRow === 7)) {
+            // AI (color=2) 升变: 到 row 0
+            if (move.toRow === 0) {
               newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
             }
           }
@@ -442,29 +453,43 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
         ← 返回
       </button>
 
+      <ClearCacheButton storageKeys={[]} onCleared={() => window.location.reload()} />
+
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-500 mb-4 mt-8">
         ♟️ 国际象棋
       </h1>
 
-      <div className="flex gap-2 mb-3">
-        {(['pve', 'pvp'] as OthelloMode[]).map(m => (
-          <button
-            key={m}
-            onClick={() => { setMode(m); reset(); }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mode === m ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            }`}
-          >
-            {m === 'pve' ? '🤖 人机对战' : '👥 双人对战'}
-          </button>
-        ))}
-      </div>
+      <AiSideSelector
+        mode={mode}
+        aiSide={aiSide}
+        onChangeMode={(m) => { setMode(m); reset(); }}
+        onChangeAiSide={(s) => {
+          setAiSide(s);
+          setBoard(createInitialBoard());
+          // aiSide=1: AI 先手 -> currentPlayer=2
+          // aiSide=2: 玩家先手 -> currentPlayer=1
+          setCurrentPlayer(s === 1 ? 2 : 1);
+          setSelected(null);
+          setStatus('playing');
+          setWinner(0);
+        }}
+      />
 
       <div className="flex gap-3 mb-3">
         <div className="bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
           <div className="text-slate-400 text-xs">当前</div>
           <div className="text-xl font-bold">
-            {currentPlayer === 1 ? <span className="text-white">白方</span> : <span className="text-gray-300">黑方</span>}
+            {mode === 'pve' ? (
+              currentPlayer === 1 ? (
+                <span className="text-amber-300">🙋 玩家</span>
+              ) : (
+                <span className="text-amber-400">🤖 电脑</span>
+              )
+            ) : currentPlayer === 1 ? (
+              <span className="text-white">下方(玩家1)</span>
+            ) : (
+              <span className="text-gray-300">上方(玩家2)</span>
+            )}
           </div>
         </div>
       </div>
@@ -549,7 +574,17 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center">
             <div className="text-5xl mb-2 animate-bounce">🏆</div>
             <div className="text-4xl font-bold mb-2">
-              {winner === 1 ? <span className="text-white">白方获胜！</span> : <span className="text-gray-300">黑方获胜！</span>}
+              {mode === 'pve' ? (
+                winner === 1 ? (
+                  <span className="text-amber-300">你赢了！</span>
+                ) : (
+                  <span className="text-red-400">电脑获胜</span>
+                )
+              ) : winner === 1 ? (
+                <span className="text-white">下方(玩家1)获胜！</span>
+              ) : (
+                <span className="text-gray-300">上方(玩家2)获胜！</span>
+              )}
             </div>
             <button
               onClick={reset}

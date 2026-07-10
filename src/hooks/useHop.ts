@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { HopState, HopDot } from '../types/game';
-import { HOP_LEVELS, canHopTo, checkHopWin } from '../utils/hopUtils';
+import { HOP_LEVELS, canHopTo, checkHopWin, saveLevelRecord, clearLevelRecord, clearAllHopRecords, getLevelRecord } from '../utils/hopUtils';
 
 const HIGH_SCORE_KEY = 'hop_best';
 
@@ -78,6 +78,7 @@ export const useHop = () => {
       // 检查是否获胜（访问了所有关卡点）
       if (checkHopWin(newVisited, prev.level.dots.length)) {
         saveBest(prev.levelIndex + 1);
+        saveLevelRecord(prev.levelIndex, newMoves);
         return {
           ...prev,
           visited: newVisited,
@@ -115,6 +116,18 @@ export const useHop = () => {
     });
   }, []);
 
+  // 清除当前关卡的胜负记录（步数/通关次数）
+  const clearCurrentLevelRecord = useCallback(() => {
+    clearLevelRecord(state.levelIndex);
+    setState(prev => ({ ...prev, bestMoves: 0 }));
+  }, [state.levelIndex]);
+
+  // 清除所有跳跳乐记录（含最高关卡）
+  const clearAllRecords = useCallback(() => {
+    clearAllHopRecords();
+    setState(prev => ({ ...prev, bestMoves: 0 }));
+  }, []);
+
   return {
     state,
     totalLevels: HOP_LEVELS.length,
@@ -122,5 +135,7 @@ export const useHop = () => {
     restartLevel,
     hopTo,
     nextLevel,
+    clearCurrentLevelRecord,
+    clearAllRecords,
   };
 };

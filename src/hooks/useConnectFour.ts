@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { ConnectFourState, OthelloMode } from '../types/game';
+import { useState, useCallback, useRef } from 'react';
+import { ConnectFourState, OthelloMode, AiSide } from '../types/game';
 import { createEmptyBoard, dropPiece, checkWin, isBoardFull, aiSelectColumn } from '../utils/connectFourUtils';
 
 const HIGH_SCORE_KEY = 'connectfour_best';
@@ -28,6 +28,10 @@ export const useConnectFour = () => {
     winningCells: null,
   }));
 
+  // AI 执哪一方：1=执红(先手)  2=执黄(后手)，默认 2（玩家先手）
+  const [aiSide, setAiSideState] = useState<AiSide>(2);
+  const aiSideRef = useRef<AiSide>(2);
+
   const [best, setBest] = useState(getBest());
 
   const reset = useCallback((mode?: OthelloMode) => {
@@ -52,10 +56,23 @@ export const useConnectFour = () => {
     });
   }, []);
 
+  const setAiSide = useCallback((side: AiSide) => {
+    aiSideRef.current = side;
+    setAiSideState(side);
+    setState(prev => ({
+      board: createEmptyBoard(),
+      currentPlayer: 1,
+      mode: prev.mode,
+      winner: null,
+      status: 'playing',
+      winningCells: null,
+    }));
+  }, []);
+
   const dropAt = useCallback((col: number) => {
     setState(prev => {
       if (prev.status !== 'playing' || prev.winner !== null) return prev;
-      if (prev.mode === 'pve' && prev.currentPlayer === 2) return prev;
+      if (prev.mode === 'pve' && prev.currentPlayer === aiSideRef.current) return prev;
 
       const result = dropPiece(prev.board, col, prev.currentPlayer);
       if (!result) return prev;
@@ -64,7 +81,7 @@ export const useConnectFour = () => {
       const winningCells = checkWin(newBoard, row, col, prev.currentPlayer);
       if (winningCells) {
         if (prev.mode === 'pve') {
-          if (prev.currentPlayer === 1) saveBest('win');
+          if (prev.currentPlayer !== aiSideRef.current) saveBest('win');
           else saveBest('loss');
           setBest(getBest());
         }
@@ -94,21 +111,23 @@ export const useConnectFour = () => {
   }, []);
 
   const aiDrop = useCallback(() => {
+    const aiPlayer = aiSideRef.current;
     setState(prev => {
-      if (prev.mode !== 'pve' || prev.currentPlayer !== 2 || prev.status !== 'playing') return prev;
-      const col = aiSelectColumn(prev.board, 2);
-      const result = dropPiece(prev.board, col, 2);
+      if (prev.mode !== 'pve' || prev.currentPlayer !== aiPlayer || prev.status !== 'playing') return prev;
+      const col = aiSelectColumn(prev.board, aiPlayer);
+      const result = dropPiece(prev.board, col, aiPlayer);
       if (!result) return prev;
 
       const { board: newBoard, row } = result;
-      const winningCells = checkWin(newBoard, row, col, 2);
+      const winningCells = checkWin(newBoard, row, col, aiPlayer);
       if (winningCells) {
+        // AI 赢了 -> 玩家输了
         saveBest('loss');
         setBest(getBest());
         return {
           ...prev,
           board: newBoard,
-          winner: 2,
+          winner: aiPlayer,
           status: 'won',
           winningCells,
         };
@@ -125,7 +144,7 @@ export const useConnectFour = () => {
       return {
         ...prev,
         board: newBoard,
-        currentPlayer: 1,
+        currentPlayer: aiPlayer === 1 ? 2 : 1,
       };
     });
   }, []);
@@ -133,9 +152,11 @@ export const useConnectFour = () => {
   return {
     state,
     best,
+    aiSide,
     dropAt,
     aiDrop,
     reset,
     setMode,
+    setAiSide,
   };
 };

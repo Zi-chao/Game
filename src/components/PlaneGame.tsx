@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { usePlaneGame } from '../hooks/usePlaneGame';
+import { ClearCacheButton } from './ClearCacheButton';
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
@@ -127,6 +128,8 @@ export const PlaneGame = ({ onBack }: PlaneGameProps) => {
       >
         ← 返回首页
       </button>
+
+      <ClearCacheButton storageKeys={['plane_high_score']} onCleared={() => window.location.reload()} />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600 mb-4 mt-8">
         ✈️ 飞机大战

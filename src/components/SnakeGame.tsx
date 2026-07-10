@@ -6,6 +6,7 @@ import { ControlButtons } from './ControlButtons';
 import { GameOverlay } from './GameOverlay';
 import { MobileControls } from './MobileControls';
 import { OrientationPrompt } from './OrientationPrompt';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface SnakeGameProps {
   onBack: () => void;
@@ -80,6 +81,8 @@ export const SnakeGame = ({ onBack }: SnakeGameProps) => {
       >
         ← 返回首页
       </button>
+
+      <ClearCacheButton storageKeys={['snake_high_score']} onCleared={() => window.location.reload()} />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-600 mb-6 mt-8">
         🐍 贪吃蛇

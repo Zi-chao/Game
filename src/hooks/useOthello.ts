@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { OthelloState, OthelloMode } from '../types/game';
+import { useState, useCallback, useRef } from 'react';
+import { OthelloState, OthelloMode, AiSide } from '../types/game';
 import {
   createInitialBoard,
   getValidMoves,
@@ -31,6 +31,28 @@ export const useOthello = () => {
     };
   });
 
+  // AI 执哪一方：1=执黑(先手)  2=执白(后手)，默认 2（玩家先手）
+  const [aiSide, setAiSideState] = useState<AiSide>(2);
+  const aiSideRef = useRef<AiSide>(2);
+
+  const setAiSide = useCallback((side: AiSide) => {
+    aiSideRef.current = side;
+    setAiSideState(side);
+    const board = createInitialBoard();
+    const firstPlayer: 1 | 2 = 1;
+    const validMoves = getValidMoves(board, firstPlayer);
+    setState({
+      board,
+      currentPlayer: firstPlayer,
+      mode: state.mode,
+      blackScore: 2,
+      whiteScore: 2,
+      validMoves,
+      status: 'playing',
+      lastPass: false,
+    });
+  }, [state.mode]);
+
   const [best, setBest] = useState(getBest());
 
   const computeScores = (board: OthelloState['board']) => {
@@ -45,11 +67,13 @@ export const useOthello = () => {
   const reset = useCallback((mode?: OthelloMode) => {
     setState(prev => {
       const board = createInitialBoard();
-      const validMoves = getValidMoves(board, 1);
+      const m = mode || prev.mode;
+      const firstPlayer: 1 | 2 = 1;
+      const validMoves = getValidMoves(board, firstPlayer);
       return {
         board,
-        currentPlayer: 1,
-        mode: mode || prev.mode,
+        currentPlayer: firstPlayer,
+        mode: m,
         blackScore: 2,
         whiteScore: 2,
         validMoves,
@@ -61,10 +85,11 @@ export const useOthello = () => {
 
   const setMode = useCallback((mode: OthelloMode) => {
     const board = createInitialBoard();
-    const validMoves = getValidMoves(board, 1);
+    const firstPlayer: 1 | 2 = 1;
+    const validMoves = getValidMoves(board, firstPlayer);
     setState({
       board,
-      currentPlayer: 1,
+      currentPlayer: firstPlayer,
       mode,
       blackScore: 2,
       whiteScore: 2,
@@ -82,8 +107,13 @@ export const useOthello = () => {
 
     setBest(prev => {
       const updated = { ...prev };
-      if (winner === 1) updated.wins += 1;
-      else if (winner === 2) updated.losses += 1;
+      // winner=1 是黑方，winner=2 是白方
+      // 玩家是否赢取决于玩家执哪一方（aiSide）
+      const playerWins = (winner === 1 && aiSideRef.current === 1) || (winner === 2 && aiSideRef.current === 2);
+      const playerLoses = (winner === 1 && aiSideRef.current === 2) || (winner === 2 && aiSideRef.current === 1);
+      if (playerWins) updated.wins += 1;
+      else if (playerLoses) updated.losses += 1;
+      // 平局不计入胜负
       localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(updated));
       return updated;
     });
@@ -95,8 +125,8 @@ export const useOthello = () => {
   const playerMove = useCallback((row: number, col: number) => {
     setState(prev => {
       if (prev.status !== 'playing') return prev;
-      // pve 模式只允许玩家1下棋；pvp 模式当前玩家都能下
-      if (prev.mode === 'pve' && prev.currentPlayer !== 1) return prev;
+      // pve 模式只允许玩家下棋（非AI回合）；pvp 模式当前玩家都能下
+      if (prev.mode === 'pve' && prev.currentPlayer === aiSideRef.current) return prev;
       const isValid = prev.validMoves.some(m => m.row === row && m.col === col);
       if (!isValid) return prev;
 
@@ -152,39 +182,37 @@ export const useOthello = () => {
 
 // AI 落子
   const aiMove = useCallback(() => {
+    const aiPlayer = aiSideRef.current;
+    const humanPlayer: 1 | 2 = aiPlayer === 1 ? 2 : 1;
     setState(prev => {
-      if (prev.mode !== 'pve' || prev.currentPlayer !== 2 || prev.status !== 'playing') return prev;
+      if (prev.mode !== 'pve' || prev.currentPlayer !== aiPlayer || prev.status !== 'playing') return prev;
 
-      // AI 也需要检查自己是否有合法走法
       if (prev.validMoves.length === 0) {
-        // AI无合法落子，检查玩家是否有
-        const playerMoves = updateValidMoves(prev.board, 1);
+        const playerMoves = updateValidMoves(prev.board, humanPlayer);
         if (playerMoves.length === 0) {
-          // 双方都无落子
           const endResult = endGame(prev.board);
           return {
             ...prev,
             blackScore: endResult.blackScore,
             whiteScore: endResult.whiteScore,
             status: 'won',
-            currentPlayer: 1,
+            currentPlayer: humanPlayer,
             validMoves: [],
             lastPass: true,
           };
         }
-        // 玩家继续走
         return {
           ...prev,
-          currentPlayer: 1,
+          currentPlayer: humanPlayer,
           validMoves: playerMoves,
           lastPass: true,
         };
       }
 
-      const aiMoveResult = aiSelectMove(prev.board, prev.validMoves);
+      const aiMoveResult = aiSelectMove(prev.board, prev.validMoves, aiPlayer);
       if (!aiMoveResult) {
         // AI选择失败，也pass
-        const playerMoves = updateValidMoves(prev.board, 1);
+        const playerMoves = updateValidMoves(prev.board, humanPlayer);
         if (playerMoves.length === 0) {
           const endResult = endGame(prev.board);
           return {
@@ -192,30 +220,30 @@ export const useOthello = () => {
             blackScore: endResult.blackScore,
             whiteScore: endResult.whiteScore,
             status: 'won',
-            currentPlayer: 1,
+            currentPlayer: humanPlayer,
             validMoves: [],
             lastPass: true,
           };
         }
         return {
           ...prev,
-          currentPlayer: 1,
+          currentPlayer: humanPlayer,
           validMoves: playerMoves,
           lastPass: true,
         };
       }
 
-      const newBoard = makeMove(prev.board, aiMoveResult.row, aiMoveResult.col, 2);
+      const newBoard = makeMove(prev.board, aiMoveResult.row, aiMoveResult.col, aiPlayer);
       if (!newBoard) return prev;
 
       const scores = computeScores(newBoard);
-      // 切换到玩家1
-      let nextValidMoves = updateValidMoves(newBoard, 1);
+      // 切换到玩家
+      let nextValidMoves = updateValidMoves(newBoard, humanPlayer);
 
-      // 玩家1无合法落子
+      // 玩家无合法落子
       if (nextValidMoves.length === 0) {
         // 检查AI自己是否还有落子
-        const aiNextMoves = updateValidMoves(newBoard, 2);
+        const aiNextMoves = updateValidMoves(newBoard, aiPlayer);
         if (aiNextMoves.length === 0) {
           // 双方都无落子，结束
           const endResult = endGame(newBoard);
@@ -225,18 +253,18 @@ export const useOthello = () => {
             blackScore: endResult.blackScore,
             whiteScore: endResult.whiteScore,
             status: 'won',
-            currentPlayer: 1,
+            currentPlayer: humanPlayer,
             validMoves: [],
             lastPass: true,
           };
         }
-        // 玩家pass，AI继续 - 保持 currentPlayer=2 让 useEffect 重新触发
+        // 玩家pass，AI继续 - 保持 currentPlayer=aiPlayer 让 useEffect 重新触发
         return {
           ...prev,
           board: newBoard,
           blackScore: scores.blackScore,
           whiteScore: scores.whiteScore,
-          currentPlayer: 2,
+          currentPlayer: aiPlayer,
           validMoves: aiNextMoves,
           lastPass: true,
         };
@@ -247,7 +275,7 @@ export const useOthello = () => {
         board: newBoard,
         blackScore: scores.blackScore,
         whiteScore: scores.whiteScore,
-        currentPlayer: 1,
+        currentPlayer: humanPlayer,
         validMoves: nextValidMoves,
         lastPass: false,
       };
@@ -257,9 +285,11 @@ export const useOthello = () => {
   return {
     state,
     best,
+    aiSide,
     playerMove,
     aiMove,
     reset,
     setMode,
+    setAiSide,
   };
 };

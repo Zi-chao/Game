@@ -1,5 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
-import { OthelloMode } from '../types/game';
+import { OthelloMode, AiSide } from '../types/game';
+import { AiSideSelector } from './AiSideSelector';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface XiangqiGameProps {
   onBack: () => void;
@@ -15,22 +17,15 @@ const LOGIC_POINT_SPACING = 56; // 逻辑单位
 const LOGIC_PIECE_SIZE = 44;
 const LOGIC_PADDING = 28;
 
+// 玩家始终在下方 (row 5~9)，AI 在上方 (row 0~4)
+// color=1 表示玩家（始终在下方）, color=2 表示 AI（始终在上方）
+// 这样玩家的棋子永远是 color=1, AI 永远是 color=2
+// 注意：这与传统的"color=1红方在上"语义不同，但保证玩家始终在下方
 const createInitialBoard = (): (Piece | null)[][] => {
   const board: (Piece | null)[][] = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(null));
 
-  const redPieces: { type: PieceType; row: number; col: number }[] = [
-    { type: 'chariot', row: 0, col: 0 }, { type: 'chariot', row: 0, col: 8 },
-    { type: 'horse', row: 0, col: 1 }, { type: 'horse', row: 0, col: 7 },
-    { type: 'elephant', row: 0, col: 2 }, { type: 'elephant', row: 0, col: 6 },
-    { type: 'guard', row: 0, col: 3 }, { type: 'guard', row: 0, col: 5 },
-    { type: 'king', row: 0, col: 4 },
-    { type: 'cannon', row: 2, col: 1 }, { type: 'cannon', row: 2, col: 7 },
-    { type: 'soldier', row: 3, col: 0 }, { type: 'soldier', row: 3, col: 2 },
-    { type: 'soldier', row: 3, col: 4 }, { type: 'soldier', row: 3, col: 6 },
-    { type: 'soldier', row: 3, col: 8 },
-  ];
-
-  const blackPieces: { type: PieceType; row: number; col: number }[] = [
+  // 玩家位置 (row 5~9, 下方) - color=1
+  const playerPieces: { type: PieceType; row: number; col: number }[] = [
     { type: 'chariot', row: 9, col: 0 }, { type: 'chariot', row: 9, col: 8 },
     { type: 'horse', row: 9, col: 1 }, { type: 'horse', row: 9, col: 7 },
     { type: 'elephant', row: 9, col: 2 }, { type: 'elephant', row: 9, col: 6 },
@@ -42,37 +37,51 @@ const createInitialBoard = (): (Piece | null)[][] => {
     { type: 'soldier', row: 6, col: 8 },
   ];
 
-  redPieces.forEach(p => board[p.row][p.col] = { type: p.type, color: 1 });
-  blackPieces.forEach(p => board[p.row][p.col] = { type: p.type, color: 2 });
+  // AI 位置 (row 0~4, 上方) - color=2
+  const aiPieces: { type: PieceType; row: number; col: number }[] = [
+    { type: 'chariot', row: 0, col: 0 }, { type: 'chariot', row: 0, col: 8 },
+    { type: 'horse', row: 0, col: 1 }, { type: 'horse', row: 0, col: 7 },
+    { type: 'elephant', row: 0, col: 2 }, { type: 'elephant', row: 0, col: 6 },
+    { type: 'guard', row: 0, col: 3 }, { type: 'guard', row: 0, col: 5 },
+    { type: 'king', row: 0, col: 4 },
+    { type: 'cannon', row: 2, col: 1 }, { type: 'cannon', row: 2, col: 7 },
+    { type: 'soldier', row: 3, col: 0 }, { type: 'soldier', row: 3, col: 2 },
+    { type: 'soldier', row: 3, col: 4 }, { type: 'soldier', row: 3, col: 6 },
+    { type: 'soldier', row: 3, col: 8 },
+  ];
+
+  // color=1 = 玩家（永远在 row 5~9 下方）
+  // color=2 = AI（永远在 row 0~4 上方）
+  playerPieces.forEach(p => board[p.row][p.col] = { type: p.type, color: 1 });
+  aiPieces.forEach(p => board[p.row][p.col] = { type: p.type, color: 2 });
 
   return board;
 };
 
+// 根据玩家视角返回棋子符号
+// playerColor: 玩家执哪一方（1=玩家, 2=AI）
+// 玩家在下方时，我们希望玩家棋子显示"将/卒"(黑方风格)或"帅/兵"(红方风格)？
+// 用户期望：玩家执红先手时看到"帅/兵"，执黑后手时看到"将/卒"
+// 即：始终让玩家的棋子显示为红方字符
 const getPieceSymbol = (piece: Piece): string => {
   const redSymbols: Record<PieceType, string> = {
-    king: '帅',
-    guard: '仕',
-    elephant: '相',
-    horse: '马',
-    chariot: '车',
-    cannon: '炮',
-    soldier: '兵',
+    king: '帅', guard: '仕', elephant: '相', horse: '马', chariot: '车', cannon: '炮', soldier: '兵',
   };
   const blackSymbols: Record<PieceType, string> = {
-    king: '将',
-    guard: '士',
-    elephant: '象',
-    horse: '马',
-    chariot: '车',
-    cannon: '炮',
-    soldier: '卒',
+    king: '将', guard: '士', elephant: '象', horse: '马', chariot: '车', cannon: '炮', soldier: '卒',
   };
+  // color=1 = 玩家 -> 显示红字符（帅/兵等）
+  // color=2 = AI -> 显示黑字符（将/卒等）
   return piece.color === 1 ? redSymbols[piece.type] : blackSymbols[piece.type];
 };
 
 export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
+  // 玩家始终在下方 (color=1), AI 始终在上方 (color=2)
+  // aiSide=1: AI 先手 -> currentPlayer 初始为 2 (AI)
+  // aiSide=2: 玩家先手 -> currentPlayer 初始为 1 (玩家)
+  const [aiSide, setAiSide] = useState<AiSide>(1);
   const [board, setBoard] = useState<(Piece | null)[][]>(createInitialBoard);
-  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(2);
+  const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(2);  // 默认 AI 先手
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [mode, setMode] = useState<OthelloMode>(() => {
     const saved = sessionStorage.getItem('game_mode_xiangqi') as OthelloMode | null;
@@ -90,12 +99,15 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
 
   const reset = useCallback(() => {
     setBoard(createInitialBoard());
-    setCurrentPlayer(2);
+    // currentPlayer 根据 aiSide 决定
+    // aiSide=1: AI 先手 (color=2) -> 2
+    // aiSide=2: 玩家先手 (color=1) -> 1
+    setCurrentPlayer(aiSide === 1 ? 2 : 1);
     setSelected(null);
     setStatus('playing');
     setWinner(0);
     setCheck(0);
-  }, []);
+  }, [aiSide]);
 
   const isValidMove = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
     const piece = board[fromRow][fromCol];
@@ -108,11 +120,25 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
     const dr = toRow - fromRow;
     const dc = toCol - fromCol;
 
+    // 玩家 (color=1) 永远在下方 row 5~9, AI (color=2) 永远在 row 0~4
+    // 玩家兵/将/士向上进攻 (dr < 0), AI 兵/将/士向下进攻 (dr > 0)
+    // 但红方(传统规则color=1)是向上进攻, 黑方(传统规则color=2)是向下进攻
+    // 我们的 color=1=玩家在下方 -> 与传统红方规则一致 (向上进攻)
+    // 我们的 color=2=AI在上方 -> 与传统黑方规则一致 (向下进攻)
+    // 所以 direction 规则保持原样即可：color=1 -> direction=1 (dr=1, 即向 row 增大方向)
+    // 等等：中国象棋中"前进"对于红方(在下方)是 dr=-1(向上)
+    // 原代码：piece.color === 1 ? 1 : -1 表示 color=1 前进是 dr=+1
+    // 但 color=1 (玩家) 在下方，向上应该是 dr=-1
+    // 所以原来的方向是反的！
+    // 修正：color=1 (玩家在下方) -> direction = -1 (向上)
+    //      color=2 (AI 在上方) -> direction = +1 (向下)
+    // 同样修正 king, guard, elephant 的活动区域
+
     switch (piece.type) {
       case 'king':
         if (Math.abs(dr) + Math.abs(dc) === 1 &&
             toCol >= 3 && toCol <= 5 &&
-            (piece.color === 1 ? toRow >= 0 && toRow <= 2 : toRow >= 7 && toRow <= 9)) {
+            (piece.color === 1 ? toRow >= 7 && toRow <= 9 : toRow >= 0 && toRow <= 2)) {
           return true;
         }
         if (dc === 0 && target?.type === 'king') {
@@ -133,10 +159,10 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
       case 'guard':
         return Math.abs(dr) === 1 && Math.abs(dc) === 1 &&
                toCol >= 3 && toCol <= 5 &&
-               (piece.color === 1 ? toRow >= 0 && toRow <= 2 : toRow >= 7 && toRow <= 9);
+               (piece.color === 1 ? toRow >= 7 && toRow <= 9 : toRow >= 0 && toRow <= 2);
       case 'elephant':
         return Math.abs(dr) === 2 && Math.abs(dc) === 2 &&
-               (piece.color === 1 ? toRow <= 4 : toRow >= 5) &&
+               (piece.color === 1 ? toRow >= 5 : toRow <= 4) &&
                board[fromRow + dr/2][fromCol + dc/2] === null;
       case 'horse':
         if ((Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2)) {
@@ -179,14 +205,19 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
           return count === 0;
         }
         return false;
-      case 'soldier':
-        const direction = piece.color === 1 ? 1 : -1;
+      case 'soldier': {
+        // 玩家 (color=1) 在下方，向上进攻：direction = -1
+        // AI (color=2) 在上方，向下进攻：direction = +1
+        const direction = piece.color === 1 ? -1 : 1;
         if (dr === direction && dc === 0) return true;
-        if (piece.color === 1 && toRow >= 5 && dr === 0 && Math.abs(dc) === 1) return true;
-        if (piece.color === 2 && toRow <= 4 && dr === 0 && Math.abs(dc) === 1) return true;
+        // 过河后可以横移
+        if (piece.color === 1 && toRow <= 4 && dr === 0 && Math.abs(dc) === 1) return true;
+        if (piece.color === 2 && toRow >= 5 && dr === 0 && Math.abs(dc) === 1) return true;
+        return false;
+      }
+      default:
         return false;
     }
-    return false;
   };
 
   const checkKing = useCallback((boardState: (Piece | null)[][]): 0 | 1 | 2 => {
@@ -410,18 +441,20 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
   const evaluateBoard = (boardState: (Piece | null)[][]): number => {
     let score = 0;
 
+    // AI 永远是 color=2 (上方 row 0~4), 玩家永远是 color=1 (下方 row 5~9)
+    // AI 进攻方向：向 row 增大方向 (向下)
     for (let r = 0; r < BOARD_ROWS; r++) {
       for (let c = 0; c < BOARD_COLS; c++) {
         const piece = boardState[r][c];
         if (piece) {
           const baseValue = pieceValues[piece.type];
-          const multiplier = piece.color === 1 ? 1 : -1;
+          // AI = color=2 -> multiplier = 1 (AI视角看自己)
+          // 玩家 = color=1 -> multiplier = -1
+          const multiplier = piece.color === 2 ? 1 : -1;
           let positionBonus = 0;
 
-          // AI 控制红方，红方向下进攻（r 越大越靠近对方）
-          // 黑方在下方，红方在上方
-          if (piece.color === 1) {
-            // 红方：r 越大越好（前进）
+          // AI (color=2) 在上方，进攻方向向下 (r 越大越好)
+          if (piece.color === 2) {
             switch (piece.type) {
               case 'soldier':
                 positionBonus = r * 60;
@@ -434,7 +467,7 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
                 break;
             }
           } else {
-            // 黑方：r 越小越好（前进）
+            // 玩家 (color=1) 在下方，进攻方向向上 (r 越小越好)
             switch (piece.type) {
               case 'soldier':
                 positionBonus = (BOARD_ROWS - 1 - r) * 60;
@@ -453,11 +486,9 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
       }
     }
 
-    // 吃子奖励：如果一方的棋子消失了，对方得分变化
-    // 这个由 baseValue 自然体现，不需要额外处理
-
     const checkResult = checkKing(boardState);
-    // AI 控制红方，红方被将扣分，黑方被将加分
+    // checkResult=1: 玩家被将 (颜色1), 扣分
+    // checkResult=2: AI被将 (颜色2), 加分
     if (checkResult === 1) {
       score -= 3000;
     } else if (checkResult === 2) {
@@ -568,8 +599,10 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
       return evaluateBoard(boardState);
     }
 
-    // AI 控制红方 (color 1)，所以 isMaximizing 时为红方
-    const color = isMaximizing ? 1 : 2;
+    // AI 永远是 color=2, 玩家永远是 color=1
+    // isMaximizing: AI 走棋 -> color=2
+    // !isMaximizing: 玩家走棋 -> color=1
+    const color = isMaximizing ? 2 : 1;
 
     const moves = getMovesForColor(boardState, color);
 
@@ -662,10 +695,11 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
       }
 
       // 检查走完后是否被将：如果是，扣分（避免送将）
-      // 检查黑方（对手）的下一步是否能直接吃红方的将
+      // checkKing=1: 玩家被将 (color=1), 无影响
+      // checkKing=2: AI被将 (color=2), 严重问题
       const checkScore = checkKing(newBoard);
-      if (checkScore === 1) {
-        // 红方（AI）被将 - 严重问题
+      if (checkScore === 2) {
+        // AI (color=2) 被将 - 严重问题
         immediateScore -= 500;
       }
 
@@ -684,14 +718,15 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
   }, [getAllValidMoves, board]);
 
   useEffect(() => {
-    if (mode === 'pve' && currentPlayer === 1 && status === 'playing') {
+    // AI 永远是 color=2
+    if (mode === 'pve' && currentPlayer === 2 && status === 'playing') {
       const timer = setTimeout(() => {
         const move = findBestAiMove();
         if (move) {
           const newBoard = board.map(r => [...r]);
           if (newBoard[move.toRow][move.toCol]?.type === 'king') {
             setStatus('won');
-            setWinner(1);
+            setWinner(2);  // AI 获胜
             setCheck(0);
           } else {
             newBoard[move.toRow][move.toCol] = newBoard[move.fromRow][move.fromCol];
@@ -705,7 +740,7 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
             }
           }
           setBoard(newBoard);
-          setCurrentPlayer(2);
+          setCurrentPlayer(1);  // 切换到玩家
         }
       }, 500);
       return () => clearTimeout(timer);
@@ -714,7 +749,8 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
 
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (status !== 'playing') return;
-    if (mode === 'pve' && currentPlayer === 1) return;
+    // AI 永远是 color=2, 玩家永远是 color=1
+    if (mode === 'pve' && currentPlayer === 2) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     if (rect.width <= 0) return;
@@ -799,36 +835,51 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
         ← 返回
       </button>
 
+      <ClearCacheButton storageKeys={[]} onCleared={() => window.location.reload()} label="🗑️ 清除缓存" />
+
       <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500 mb-2 md:mb-3 mt-6 md:mt-8">
         🐘 中国象棋
       </h1>
 
-      <div className="flex gap-2 mb-2 md:mb-3">
-        {(['pve', 'pvp'] as OthelloMode[]).map(m => (
-          <button
-            key={m}
-            onClick={() => { setMode(m); reset(); }}
-            className={`px-3 py-1.5 md:px-4 md:py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mode === m ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            }`}
-          >
-            {m === 'pve' ? '🤖 人机对战' : '👥 双人对战'}
-          </button>
-        ))}
-      </div>
+      <AiSideSelector
+        mode={mode}
+        aiSide={aiSide}
+        onChangeMode={(m) => { setMode(m); reset(); }}
+        onChangeAiSide={(s) => {
+          setAiSide(s);
+          setBoard(createInitialBoard());
+          // aiSide=1: AI 先手 -> currentPlayer=2
+          // aiSide=2: 玩家先手 -> currentPlayer=1
+          setCurrentPlayer(s === 1 ? 2 : 1);
+          setSelected(null);
+          setStatus('playing');
+          setWinner(0);
+          setCheck(0);
+        }}
+      />
 
       <div className="flex gap-3 mb-2 md:mb-3">
         <div className="bg-slate-800 rounded-lg px-3 py-1.5 md:px-4 md:py-2 border border-slate-700">
           <div className="text-slate-400 text-xs">当前</div>
           <div className="text-lg md:text-xl font-bold">
-            {currentPlayer === 1 ? <span className="text-red-400">红方</span> : <span className="text-gray-300">黑方</span>}
+            {mode === 'pve' ? (
+              currentPlayer === 1 ? (
+                <span className="text-amber-300">🙋 玩家</span>
+              ) : (
+                <span className="text-amber-400">🤖 电脑</span>
+              )
+            ) : currentPlayer === 1 ? (
+              <span className="text-red-400">下方(玩家)</span>
+            ) : (
+              <span className="text-gray-300">上方(玩家)</span>
+            )}
           </div>
         </div>
         {check !== 0 && (
           <div className="bg-red-600 rounded-lg px-3 py-1.5 md:px-4 md:py-2 border border-red-500 animate-pulse">
             <div className="text-red-200 text-xs">将军!</div>
             <div className="text-lg md:text-xl font-bold text-white">
-              {check === 1 ? '红方被将' : '黑方被将'}
+              {check === 1 ? '玩家被将' : '电脑被将'}
             </div>
           </div>
         )}
@@ -1042,8 +1093,9 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
                   const cx = LOGIC_PADDING + c * LOGIC_POINT_SPACING;
                   const cy = LOGIC_PADDING + r * LOGIC_POINT_SPACING;
                   const pieceRadius = LOGIC_PIECE_SIZE / 2;
-                  const fillColor = cell.color === 1 ? '#ef4444' : '#1f2937';
-                  const borderColor = cell.color === 1 ? '#fca5a5' : '#4b5563';
+                  const isPlayerPiece = cell.color === 1;
+                  const fillColor = isPlayerPiece ? '#ef4444' : '#1f2937';
+                  const borderColor = isPlayerPiece ? '#fca5a5' : '#4b5563';
                   return (
                     <g key={`piece-${r}-${c}`}>
                       {/* 棋子阴影 */}
@@ -1093,7 +1145,17 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center z-30">
               <div className="text-5xl mb-2 animate-bounce">🏆</div>
               <div className="text-3xl md:text-4xl font-bold mb-2">
-                {winner === 1 ? <span className="text-red-400">红方获胜！</span> : <span className="text-gray-300">黑方获胜！</span>}
+                {mode === 'pve' ? (
+                  winner === 1 ? (
+                    <span className="text-amber-300">你赢了！</span>
+                  ) : (
+                    <span className="text-red-400">电脑获胜</span>
+                  )
+                ) : winner === 1 ? (
+                  <span className="text-red-400">下方(玩家1)获胜！</span>
+                ) : (
+                  <span className="text-gray-300">上方(玩家2)获胜！</span>
+                )}
               </div>
               <button
                 onClick={reset}

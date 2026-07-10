@@ -3,6 +3,69 @@ import { HopLevel, HopDot } from '../types/game';
 export const HOP_GRID_SIZE = 9;
 export const HOP_CELL_SIZE = 50;
 
+const HIGH_SCORE_KEY = 'hop_best';
+const LEVEL_RECORDS_KEY = 'hop_level_records';
+
+// 每关的记录：通关最少步数 和 通关次数
+export interface LevelRecord {
+  bestMoves: number;     // 该关最少步数（0 表示未通关）
+  clearedCount: number;  // 该关累计通关次数
+  lastPlayed: number;    // 上次通关时间戳
+}
+
+export type LevelRecords = Record<number, LevelRecord>;
+
+export const getAllLevelRecords = (): LevelRecords => {
+  const saved = localStorage.getItem(LEVEL_RECORDS_KEY);
+  if (!saved) return {};
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return {};
+  }
+};
+
+export const getLevelRecord = (levelIndex: number): LevelRecord => {
+  const all = getAllLevelRecords();
+  return all[levelIndex] || { bestMoves: 0, clearedCount: 0, lastPlayed: 0 };
+};
+
+export const saveLevelRecord = (levelIndex: number, moves: number) => {
+  const all = getAllLevelRecords();
+  const current = all[levelIndex] || { bestMoves: 0, clearedCount: 0, lastPlayed: 0 };
+  all[levelIndex] = {
+    bestMoves: current.bestMoves === 0 ? moves : Math.min(current.bestMoves, moves),
+    clearedCount: current.clearedCount + 1,
+    lastPlayed: Date.now(),
+  };
+  localStorage.setItem(LEVEL_RECORDS_KEY, JSON.stringify(all));
+};
+
+// 清除单个关卡记录（最少步数、通关次数、上次通关时间）
+export const clearLevelRecord = (levelIndex: number) => {
+  const all = getAllLevelRecords();
+  delete all[levelIndex];
+  localStorage.setItem(LEVEL_RECORDS_KEY, JSON.stringify(all));
+};
+
+// 清除所有跳跳乐记录（含最高关卡统计）
+export const clearAllHopRecords = () => {
+  localStorage.removeItem(LEVEL_RECORDS_KEY);
+  localStorage.removeItem(HIGH_SCORE_KEY);
+};
+
+const getBest = (): number => {
+  const saved = localStorage.getItem(HIGH_SCORE_KEY);
+  return saved ? parseInt(saved, 10) : 0;
+};
+
+const saveBest = (clearedLevels: number) => {
+  const current = getBest();
+  if (clearedLevels > current) {
+    localStorage.setItem(HIGH_SCORE_KEY, clearedLevels.toString());
+  }
+};
+
 // 检查两点之间是否在一条线上（水平/垂直/对角）
 const isAligned = (r1: number, c1: number, r2: number, c2: number): boolean => {
   const dr = Math.abs(r2 - r1);

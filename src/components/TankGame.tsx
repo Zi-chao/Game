@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTankGame } from '../hooks/useTankGame';
 import { OrientationPrompt } from './OrientationPrompt';
+import { ClearCacheButton } from './ClearCacheButton';
 import {
   TILE_SIZE,
   TANK_SIZE,
@@ -135,6 +136,8 @@ export const TankGame = ({ onBack }: TankGameProps) => {
       >
         ← 返回
       </button>
+
+      <ClearCacheButton storageKeys={['tank_high_score']} onCleared={() => window.location.reload()} />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-600 mb-4 mt-8">
         🪖 坦克大战

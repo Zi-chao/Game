@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { TicTacToeState, OthelloMode } from '../types/game';
+import { useState, useCallback, useRef } from 'react';
+import { TicTacToeState, OthelloMode, AiSide } from '../types/game';
 import { checkWinner, checkDraw, aiMove } from '../utils/tictactoeUtils';
 
 const HIGH_SCORE_KEY = 'tictactoe_best';
@@ -29,6 +29,10 @@ export const useTicTacToe = () => {
     winningLine: null,
   }));
 
+  // AI 执哪一方：1=执X(先手)  2=执O(后手)，默认 2（玩家先手）
+  const [aiSide, setAiSideState] = useState<AiSide>(2);
+  const aiSideRef = useRef<AiSide>(2);
+
   const [best, setBest] = useState(getBest());
 
   const reset = useCallback((mode?: OthelloMode) => {
@@ -53,11 +57,24 @@ export const useTicTacToe = () => {
     });
   }, []);
 
+  const setAiSide = useCallback((side: AiSide) => {
+    aiSideRef.current = side;
+    setAiSideState(side);
+    setState(prev => ({
+      board: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+      currentPlayer: 1,
+      mode: prev.mode,
+      winner: null,
+      status: 'playing',
+      winningLine: null,
+    }));
+  }, []);
+
   const makeMove = useCallback((index: number) => {
     setState(prev => {
       if (prev.status !== 'playing' || prev.winner !== null) return prev;
       if (prev.board[index] !== 0) return prev;
-      if (prev.mode === 'pve' && prev.currentPlayer === 2) return prev;
+      if (prev.mode === 'pve' && prev.currentPlayer === aiSideRef.current) return prev;
 
       const newBoard = [...prev.board];
       newBoard[index] = prev.currentPlayer;
@@ -65,8 +82,8 @@ export const useTicTacToe = () => {
       const { winner, line } = checkWinner(newBoard);
       if (winner !== null) {
         if (prev.mode === 'pve') {
-          if (winner === 1) saveBest('win');
-          else if (winner === 2) saveBest('loss');
+          if (winner !== aiSideRef.current) saveBest('win');
+          else saveBest('loss');
           setBest(getBest());
         }
         return {
@@ -98,15 +115,16 @@ export const useTicTacToe = () => {
     });
   }, []);
 
-  // AI 自动落子（在 pve 模式下，电脑回合时自动调用）
+  // AI 自动落子（在 pve 模式下，AI 回合时自动调用）
   const aiMakeMove = useCallback(() => {
+    const aiPlayer = aiSideRef.current;
     setState(prev => {
-      if (prev.mode !== 'pve' || prev.currentPlayer !== 2 || prev.status !== 'playing') return prev;
-      const move = aiMove([...prev.board]);
+      if (prev.mode !== 'pve' || prev.currentPlayer !== aiPlayer || prev.status !== 'playing') return prev;
+      const move = aiMove([...prev.board], aiPlayer);
       if (move < 0) return prev;
 
       const newBoard = [...prev.board];
-      newBoard[move] = 2;
+      newBoard[move] = aiPlayer;
 
       const { winner, line } = checkWinner(newBoard);
       if (winner !== null) {
@@ -134,7 +152,7 @@ export const useTicTacToe = () => {
       return {
         ...prev,
         board: newBoard,
-        currentPlayer: 1,
+        currentPlayer: aiPlayer === 1 ? 2 : 1,
       };
     });
   }, []);
@@ -142,9 +160,11 @@ export const useTicTacToe = () => {
   return {
     state,
     best,
+    aiSide,
     makeMove,
     aiMakeMove,
     reset,
     setMode,
+    setAiSide,
   };
 };

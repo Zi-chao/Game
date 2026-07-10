@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useVersusPlane } from '../hooks/useVersusPlane';
 import { OrientationPrompt } from './OrientationPrompt';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface VersusPlaneGameProps {
   onBack: () => void;
@@ -173,6 +174,8 @@ export const VersusPlaneGame = ({ onBack }: VersusPlaneGameProps) => {
       >
         ← 返回
       </button>
+
+      <ClearCacheButton storageKeys={['versus_plane_best']} onCleared={() => window.location.reload()} />
 
       {/* 玩家2控制 - 倒置显示在标题上方，触摸区域 */}
       <div className="md:hidden w-full mt-2 px-3 select-none">

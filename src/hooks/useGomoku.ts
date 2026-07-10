@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { GomokuState, GomokuMode } from '../types/game';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { GomokuState, GomokuMode, AiSide } from '../types/game';
 import { createEmptyBoard, checkWin, findBestMove } from '../utils/gomokuUtils';
 
 const HIGH_SCORE_KEY = 'gomoku_best';
@@ -23,6 +23,10 @@ export const useGomoku = () => {
     mode: 'pve',
   }));
 
+  // AI 执哪一方：1=执黑(先手)  2=执白(后手)，默认 2（玩家先手）
+  const [aiSide, setAiSideState] = useState<AiSide>(2);
+  const aiSideRef = useRef<AiSide>(2);
+
   const best = getBest();
 
   const reset = useCallback(() => {
@@ -37,21 +41,48 @@ export const useGomoku = () => {
   }, []);
 
   const setMode = useCallback((mode: GomokuMode) => {
-    setState(prev => ({ ...prev, mode }));
+    setState(prev => ({
+      board: createEmptyBoard(),
+      currentPlayer: 1,
+      winner: null,
+      status: 'playing',
+      moves: 0,
+      mode,
+    }));
+  }, []);
+
+  const setAiSide = useCallback((side: AiSide) => {
+    aiSideRef.current = side;
+    setAiSideState(side);
+    // aiSide=1: AI 执黑先手 -> currentPlayer 应该=1 (AI先手)
+    // aiSide=2: 玩家执黑先手 -> currentPlayer=1 (玩家先手)
+    // 实际上颜色1是先手方，所以 currentPlayer 始终=1
+    setState(prev => ({
+      board: createEmptyBoard(),
+      currentPlayer: 1,
+      winner: null,
+      status: 'playing',
+      moves: 0,
+      mode: prev.mode,
+    }));
   }, []);
 
   const placeStone = useCallback((row: number, col: number) => {
     setState(prev => {
       if (prev.status !== 'playing' || prev.winner !== null) return prev;
       if (prev.board[row][col] !== 0) return prev;
+      if (prev.mode === 'pve' && prev.currentPlayer === aiSideRef.current) return prev;
 
       const newBoard = prev.board.map(r => [...r]);
       newBoard[row][col] = prev.currentPlayer;
 
       if (checkWin(newBoard, row, col, prev.currentPlayer)) {
-        if (prev.mode === 'pve' && prev.currentPlayer === 1) {
+        // 玩家（人类）胜利：aiSide 玩家是 1 则 currentPlayer=1 表示 AI 赢
+        if (prev.mode === 'pve' && prev.currentPlayer !== aiSideRef.current) {
+          // 玩家胜利
           saveBest(best.wins + 1, best.losses);
-        } else if (prev.mode === 'pve' && prev.currentPlayer === 2) {
+        } else if (prev.mode === 'pve') {
+          // AI 胜利
           saveBest(best.wins, best.losses + 1);
         }
         return {
@@ -83,22 +114,23 @@ export const useGomoku = () => {
   }, [best]);
 
   useEffect(() => {
-    if (state.mode === 'pve' && state.status === 'playing' && state.currentPlayer === 2 && state.winner === null) {
+    const aiPlayer = aiSideRef.current;
+    if (state.mode === 'pve' && state.status === 'playing' && state.currentPlayer === aiPlayer && state.winner === null) {
       const timer = setTimeout(() => {
-        const { row, col } = findBestMove(state.board, 2);
+        const { row, col } = findBestMove(state.board, aiPlayer);
         setState(prev => {
-          if (prev.mode !== 'pve' || prev.currentPlayer !== 2 || prev.winner !== null) return prev;
+          if (prev.mode !== 'pve' || prev.currentPlayer !== aiPlayer || prev.winner !== null) return prev;
           if (prev.board[row][col] !== 0) return prev;
 
           const newBoard = prev.board.map(r => [...r]);
-          newBoard[row][col] = 2;
+          newBoard[row][col] = aiPlayer;
 
-          if (checkWin(newBoard, row, col, 2)) {
+          if (checkWin(newBoard, row, col, aiPlayer)) {
             saveBest(best.wins, best.losses + 1);
             return {
               ...prev,
               board: newBoard,
-              winner: 2,
+              winner: aiPlayer,
               status: 'won',
               moves: prev.moves + 1,
             };
@@ -107,7 +139,7 @@ export const useGomoku = () => {
           return {
             ...prev,
             board: newBoard,
-            currentPlayer: 1,
+            currentPlayer: aiPlayer === 1 ? 2 : 1,
             moves: prev.moves + 1,
           };
         });
@@ -119,8 +151,10 @@ export const useGomoku = () => {
   return {
     state,
     best,
+    aiSide,
     reset,
     placeStone,
     setMode,
+    setAiSide,
   };
 };

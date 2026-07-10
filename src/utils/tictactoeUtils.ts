@@ -20,10 +20,11 @@ export const checkDraw = (board: (0 | 1 | 2)[]): boolean => {
   return board.every(c => c !== 0);
 };
 
-const minimax = (board: (0 | 1 | 2)[], depth: number, isMaximizing: boolean): number => {
+const minimax = (board: (0 | 1 | 2)[], depth: number, isMaximizing: boolean, aiPlayer: 1 | 2): number => {
+  const opponent = aiPlayer === 1 ? 2 : 1;
   const { winner } = checkWinner(board);
-  if (winner === 2) return 10 - depth;
-  if (winner === 1) return depth - 10;
+  if (winner === aiPlayer) return 10 - depth;
+  if (winner === opponent) return depth - 10;
   if (checkDraw(board)) return 0;
 
   const available = board.map((v, i) => (v === 0 ? i : -1)).filter(i => i >= 0);
@@ -31,23 +32,23 @@ const minimax = (board: (0 | 1 | 2)[], depth: number, isMaximizing: boolean): nu
   if (isMaximizing) {
     let best = -Infinity;
     for (const move of available) {
-      board[move] = 2;
-      best = Math.max(best, minimax(board, depth + 1, false));
+      board[move] = aiPlayer;
+      best = Math.max(best, minimax(board, depth + 1, false, aiPlayer));
       board[move] = 0;
     }
     return best;
   } else {
     let best = Infinity;
     for (const move of available) {
-      board[move] = 1;
-      best = Math.min(best, minimax(board, depth + 1, true));
+      board[move] = opponent;
+      best = Math.min(best, minimax(board, depth + 1, true, aiPlayer));
       board[move] = 0;
     }
     return best;
   }
 };
 
-export const aiMove = (board: (0 | 1 | 2)[]): number => {
+export const aiMove = (board: (0 | 1 | 2)[], aiPlayer: 1 | 2 = 2): number => {
   const available = board.map((v, i) => (v === 0 ? i : -1)).filter(i => i >= 0);
   if (available.length === 0) return -1;
   if (available.length === 9) {
@@ -58,8 +59,8 @@ export const aiMove = (board: (0 | 1 | 2)[]): number => {
   let bestMove = available[0];
   for (const move of available) {
     const newBoard = [...board];
-    newBoard[move] = 2;
-    const score = minimax(newBoard, 0, false);
+    newBoard[move] = aiPlayer;
+    const score = minimax(newBoard, 0, false, aiPlayer);
     if (score > bestScore) {
       bestScore = score;
       bestMove = move;

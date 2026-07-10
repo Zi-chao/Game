@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { useGomoku } from '../hooks/useGomoku';
 import { BOARD_SIZE } from '../utils/gomokuUtils';
 import { GomokuMode } from '../types/game';
+import { AiSideSelector } from './AiSideSelector';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface GomokuGameProps {
   onBack: () => void;
 }
 
 export const GomokuGame = ({ onBack }: GomokuGameProps) => {
-  const { state, best, reset, placeStone, setMode } = useGomoku();
+  const { state, best, aiSide, reset, placeStone, setMode, setAiSide } = useGomoku();
   const [cellSize, setCellSize] = useState(36);
 
   // 从sessionStorage读取模式
@@ -39,10 +41,13 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
     };
   }, []);
 
+  // 人类玩家：与 aiSide 相反
+  const humanPlayer: 1 | 2 = aiSide === 1 ? 2 : 1;
+
   // 点击位置转格子坐标：点击 canvas 任意位置，找出最近的可下子格子
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (state.status !== 'playing') return;
-    if (state.mode === 'pve' && state.currentPlayer !== 1) return;
+    if (state.mode === 'pve' && state.currentPlayer !== humanPlayer) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -75,40 +80,27 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
         ← 返回首页
       </button>
 
+      <ClearCacheButton storageKeys={['gomoku_best']} onCleared={() => window.location.reload()} />
+
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-500 mb-4 mt-8">
         ⚫⚪ 五子棋
       </h1>
 
-      <div className="flex gap-2 mb-3">
-        {(['pve', 'pvp'] as GomokuMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setMode(mode)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              state.mode === mode
-                ? 'bg-amber-600 text-white shadow-lg'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            }`}
-          >
-            {mode === 'pve' ? '🤖 人机对战' : '👥 双人对战'}
-          </button>
-        ))}
-      </div>
+      <AiSideSelector
+        mode={state.mode}
+        aiSide={aiSide}
+        onChangeMode={(m) => setMode(m)}
+        onChangeAiSide={(s) => setAiSide(s)}
+      />
 
       <div className="flex gap-3 mb-3">
         <div className="bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
           <div className="text-slate-400 text-xs">当前</div>
           <div className="text-xl font-bold flex items-center gap-2">
-            {state.currentPlayer === 1 ? (
-              <>
-                <div className="w-4 h-4 rounded-full bg-black border-2 border-white"></div>
-                <span className="text-white">{state.mode === 'pve' ? '玩家' : '玩家1'}</span>
-              </>
+            {state.currentPlayer === humanPlayer ? (
+              <span className="text-amber-300">🙋 玩家</span>
             ) : (
-              <>
-                <div className="w-4 h-4 rounded-full bg-white"></div>
-                <span className="text-amber-400">{state.mode === 'pve' ? '电脑' : '玩家2'}</span>
-              </>
+              <span className="text-amber-400">🤖 电脑</span>
             )}
           </div>
         </div>
@@ -212,7 +204,7 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
 
         {state.status === 'won' && (
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center">
-            {state.winner === 1 ? (
+            {state.winner === humanPlayer ? (
               <>
                 <div className="text-4xl mb-2 animate-bounce">🏆</div>
                 <div className="text-4xl font-bold text-amber-400 mb-2 animate-pulse">
@@ -260,7 +252,7 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
 
       <div className="mt-4 text-slate-400 text-xs text-center">
         <p>点击交叉点附近落子 | 五子连成一线即获胜</p>
-        <p>{state.mode === 'pve' ? '黑棋=玩家，白棋=电脑' : '黑棋=玩家1，白棋=玩家2'}</p>
+        <p>{state.mode === 'pve' ? '你执' + (humanPlayer === 1 ? '黑' : '白') + '，电脑执' + (aiSide === 1 ? '黑' : '白') : '玩家1执黑，玩家2执白'}</p>
       </div>
     </div>
   );

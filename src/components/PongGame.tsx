@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { usePong } from '../hooks/usePong';
 import { OrientationPrompt } from './OrientationPrompt';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface PongGameProps {
   onBack: () => void;
@@ -83,6 +84,8 @@ export const PongGame = ({ onBack }: PongGameProps) => {
       >
         ← 返回
       </button>
+
+      <ClearCacheButton storageKeys={['pong_best']} onCleared={() => window.location.reload()} />
 
       <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-6 md:mt-8">
         🏓 重力小球

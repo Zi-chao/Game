@@ -2,13 +2,15 @@ import { useEffect, useRef } from 'react';
 import { useConnectFour } from '../hooks/useConnectFour';
 import { ROWS, COLS } from '../utils/connectFourUtils';
 import { OthelloMode } from '../types/game';
+import { AiSideSelector } from './AiSideSelector';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface ConnectFourGameProps {
   onBack: () => void;
 }
 
 export const ConnectFourGame = ({ onBack }: ConnectFourGameProps) => {
-  const { state, best, dropAt, aiDrop, reset, setMode } = useConnectFour();
+  const { state, best, aiSide, dropAt, aiDrop, reset, setMode, setAiSide } = useConnectFour();
   const aiTimerRef = useRef<number | null>(null);
 
   // 从sessionStorage读取模式
@@ -20,7 +22,7 @@ export const ConnectFourGame = ({ onBack }: ConnectFourGameProps) => {
   }, [setMode]);
 
   useEffect(() => {
-    if (state.mode === 'pve' && state.currentPlayer === 2 && state.status === 'playing') {
+    if (state.mode === 'pve' && state.currentPlayer === aiSide && state.status === 'playing') {
       aiTimerRef.current = window.setTimeout(() => {
         aiDrop();
       }, 500);
@@ -31,11 +33,11 @@ export const ConnectFourGame = ({ onBack }: ConnectFourGameProps) => {
         }
       };
     }
-  }, [state.currentPlayer, state.status, state.mode, aiDrop]);
+  }, [state.currentPlayer, state.status, state.mode, aiDrop, aiSide]);
 
   const handleColumnClick = (col: number) => {
     if (state.status !== 'playing') return;
-    if (state.mode === 'pve' && state.currentPlayer === 2) return;
+    if (state.mode === 'pve' && state.currentPlayer === aiSide) return;
     dropAt(col);
   };
 
@@ -52,40 +54,33 @@ export const ConnectFourGame = ({ onBack }: ConnectFourGameProps) => {
         ← 返回首页
       </button>
 
+      <ClearCacheButton storageKeys={['connectfour_best']} onCleared={() => window.location.reload()} />
+
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-pink-500 mb-4 mt-8">
         🔴🟡 四子棋
       </h1>
 
-      <div className="flex gap-2 mb-3">
-        {(['pve', 'pvp'] as OthelloMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setMode(mode)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              state.mode === mode
-                ? 'bg-rose-600 text-white shadow-lg'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            }`}
-          >
-            {mode === 'pve' ? '🤖 人机对战' : '👥 双人对战'}
-          </button>
-        ))}
-      </div>
+      <AiSideSelector
+        mode={state.mode}
+        aiSide={aiSide}
+        onChangeMode={(m) => setMode(m)}
+        onChangeAiSide={(s) => setAiSide(s)}
+      />
 
       <div className="flex gap-3 mb-3">
         <div className="bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
           <div className="text-slate-400 text-xs">当前</div>
           <div className="text-xl font-bold flex items-center gap-2">
-            {state.currentPlayer === 1 ? (
-              <>
-                <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white"></div>
-                <span className="text-red-300">玩家1</span>
-              </>
+            {state.mode === 'pve' ? (
+              state.currentPlayer !== aiSide ? (
+                <span className="text-amber-300">🙋 玩家</span>
+              ) : (
+                <span className="text-amber-400">🤖 电脑</span>
+              )
+            ) : state.currentPlayer === 1 ? (
+              <span className="text-red-300">玩家1</span>
             ) : (
-              <>
-                <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
-                <span className="text-yellow-300">{state.mode === 'pve' ? '电脑' : '玩家2'}</span>
-              </>
+              <span className="text-yellow-300">玩家2</span>
             )}
           </div>
         </div>
@@ -105,7 +100,7 @@ export const ConnectFourGame = ({ onBack }: ConnectFourGameProps) => {
               <button
                 key={`arrow-${col}`}
                 onClick={() => handleColumnClick(col)}
-                disabled={state.status !== 'playing' || (state.mode === 'pve' && state.currentPlayer === 2)}
+                disabled={state.status !== 'playing' || (state.mode === 'pve' && state.currentPlayer === aiSide)}
                 className="h-6 bg-blue-800/50 hover:bg-blue-600/50 disabled:opacity-30 rounded text-white text-xs flex items-center justify-center transition-all"
               >
                 ▼
@@ -142,19 +137,27 @@ export const ConnectFourGame = ({ onBack }: ConnectFourGameProps) => {
 
         {state.status === 'won' && (
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center">
-            {state.winner === 1 ? (
+            {state.mode === 'pve' ? (
+              state.winner !== aiSide ? (
+                <>
+                  <div className="text-5xl mb-2 animate-bounce">🏆</div>
+                  <div className="text-4xl font-bold text-red-400 mb-2 animate-pulse">你赢了！</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-5xl mb-2">💔</div>
+                  <div className="text-4xl font-bold text-yellow-400 mb-2 animate-pulse">电脑获胜</div>
+                </>
+              )
+            ) : state.winner === 1 ? (
               <>
                 <div className="text-5xl mb-2 animate-bounce">🏆</div>
-                <div className="text-4xl font-bold text-red-400 mb-2 animate-pulse">
-                  {state.mode === 'pve' ? '你赢了！' : '玩家1获胜！'}
-                </div>
+                <div className="text-4xl font-bold text-red-400 mb-2 animate-pulse">玩家1获胜！</div>
               </>
             ) : (
               <>
-                <div className="text-5xl mb-2">{state.mode === 'pve' ? '💔' : '🏆'}</div>
-                <div className="text-4xl font-bold text-yellow-400 mb-2 animate-pulse">
-                  {state.mode === 'pve' ? '电脑获胜' : '玩家2获胜！'}
-                </div>
+                <div className="text-5xl mb-2">🏆</div>
+                <div className="text-4xl font-bold text-yellow-400 mb-2 animate-pulse">玩家2获胜！</div>
               </>
             )}
             <button

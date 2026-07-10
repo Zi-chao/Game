@@ -1,15 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useHop } from '../hooks/useHop';
-import { HOP_GRID_SIZE } from '../utils/hopUtils';
+import { HOP_GRID_SIZE, getLevelRecord, getAllLevelRecords, HOP_LEVELS } from '../utils/hopUtils';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface HopGameProps {
   onBack: () => void;
 }
 
+// 格式化时间戳为可读字符串
+const formatTime = (timestamp: number): string => {
+  if (!timestamp) return '-';
+  const d = new Date(timestamp);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const HopGame = ({ onBack }: HopGameProps) => {
-  const { state, totalLevels, reset, restartLevel, hopTo, nextLevel } = useHop();
+  const { state, totalLevels, reset, restartLevel, hopTo, nextLevel, clearCurrentLevelRecord, clearAllRecords } = useHop();
   const [cellSize, setCellSize] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<null | 'current' | 'all'>(null);
+  const [recordsVersion, setRecordsVersion] = useState(0); // 触发重新读取
+
+  // 当前关卡的详细记录
+  const currentRecord = getLevelRecord(state.levelIndex);
+  // 全部关卡记录
+  const allRecords = getAllLevelRecords();
 
   const isVisited = (row: number, col: number): boolean => {
     return state.visited.some(v => v.row === row && v.col === col);
@@ -70,6 +86,8 @@ export const HopGame = ({ onBack }: HopGameProps) => {
         ← 返回首页
       </button>
 
+      <ClearCacheButton storageKeys={['hop_best', 'hop_level_records']} onCleared={() => window.location.reload()} />
+
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-pink-600 mb-4 mt-8">
         🦘 跳跳乐
       </h1>
@@ -96,6 +114,18 @@ export const HopGame = ({ onBack }: HopGameProps) => {
           <div className="bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
             <div className="text-slate-400 text-xs">最高关卡</div>
             <div className="text-2xl font-bold text-yellow-400 font-mono">{state.bestMoves}</div>
+          </div>
+        )}
+        {currentRecord.bestMoves > 0 && (
+          <div className="bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
+            <div className="text-slate-400 text-xs">本关最少步数</div>
+            <div className="text-2xl font-bold text-pink-400 font-mono">{currentRecord.bestMoves}</div>
+          </div>
+        )}
+        {currentRecord.clearedCount > 0 && (
+          <div className="bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
+            <div className="text-slate-400 text-xs">本关通关次数</div>
+            <div className="text-2xl font-bold text-cyan-400 font-mono">{currentRecord.clearedCount}</div>
           </div>
         )}
       </div>
@@ -184,7 +214,7 @@ export const HopGame = ({ onBack }: HopGameProps) => {
         )}
       </div>
 
-      <div className="flex gap-3 mt-4">
+      <div className="flex flex-wrap gap-3 mt-4 justify-center">
         <button
           onClick={restartLevel}
           className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all transform hover:scale-105"
@@ -197,12 +227,137 @@ export const HopGame = ({ onBack }: HopGameProps) => {
         >
           重新开始
         </button>
+        <button
+          onClick={() => setConfirmAction('current')}
+          className="px-6 py-2 bg-amber-700 hover:bg-amber-600 text-white font-bold rounded-lg transition-all transform hover:scale-105"
+          title={`清除第 ${state.levelIndex + 1} 关的最少步数和通关次数记录`}
+        >
+          清除本关记录
+        </button>
+        <button
+          onClick={() => setConfirmAction('all')}
+          className="px-6 py-2 bg-red-700 hover:bg-red-600 text-white font-bold rounded-lg transition-all transform hover:scale-105"
+          title="清除所有跳跳乐关卡记录和最高关卡统计"
+        >
+          清除全部记录
+        </button>
       </div>
+
+      {/* 全部关卡记录概览 */}
+      <details className="mt-3 w-full max-w-2xl">
+        <summary className="cursor-pointer text-slate-400 hover:text-slate-200 text-xs text-center select-none">
+          📊 查看全部关卡记录（{Object.keys(allRecords).length}/{totalLevels} 关有记录）
+        </summary>
+        <div className="mt-2 bg-slate-800/60 rounded-lg p-3 border border-slate-700">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-slate-400 border-b border-slate-700">
+                <th className="py-1 px-2 text-left">关卡</th>
+                <th className="py-1 px-2 text-right">最少步数</th>
+                <th className="py-1 px-2 text-right">通关次数</th>
+                <th className="py-1 px-2 text-right">上次通关</th>
+              </tr>
+            </thead>
+            <tbody>
+              {HOP_LEVELS.map((_, idx) => {
+                const rec = allRecords[idx] || { bestMoves: 0, clearedCount: 0, lastPlayed: 0 };
+                return (
+                  <tr key={idx} className={`${idx === state.levelIndex ? 'bg-fuchsia-900/30' : ''}`}>
+                    <td className="py-1 px-2 text-slate-300">
+                      第 {idx + 1} 关{idx === state.levelIndex && ' ⬅'}
+                    </td>
+                    <td className="py-1 px-2 text-right font-mono text-pink-300">
+                      {rec.bestMoves > 0 ? rec.bestMoves : '-'}
+                    </td>
+                    <td className="py-1 px-2 text-right font-mono text-cyan-300">
+                      {rec.clearedCount > 0 ? rec.clearedCount : '-'}
+                    </td>
+                    <td className="py-1 px-2 text-right text-slate-400">
+                      {rec.lastPlayed > 0 ? formatTime(rec.lastPlayed) : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </details>
 
       <div className="mt-4 text-slate-400 text-xs text-center">
         <p>点击其他棋子跳过去 | 必须水平、垂直或对角线方向跳</p>
         <p>访问所有关卡点即可过关</p>
       </div>
+
+      {/* 确认对话框 */}
+      {confirmAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setConfirmAction(null)}
+        >
+          <div
+            className="bg-slate-800 border-2 border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-2xl font-bold text-white mb-3 text-center">
+              ⚠️ 确认清除记录
+            </div>
+            <div className="text-slate-300 text-sm mb-5 leading-relaxed">
+              {confirmAction === 'current' ? (
+                <>
+                  将要清除 <span className="text-pink-400 font-bold">第 {state.levelIndex + 1} 关</span> 的记录：
+                  <ul className="mt-2 ml-4 list-disc text-slate-400">
+                    <li>本关最少步数（{currentRecord.bestMoves > 0 ? currentRecord.bestMoves : '无'}）</li>
+                    <li>本关通关次数（{currentRecord.clearedCount}）</li>
+                    <li>上次通关时间</li>
+                  </ul>
+                  <p className="mt-3 text-amber-400 text-xs">
+                    其他关卡的记录和最高关卡统计不受影响
+                  </p>
+                </>
+              ) : (
+                <>
+                  将要清除 <span className="text-red-400 font-bold">所有跳跳乐记录</span>：
+                  <ul className="mt-2 ml-4 list-disc text-slate-400">
+                    <li>全部 {totalLevels} 个关卡的最少步数</li>
+                    <li>全部关卡的通关次数</li>
+                    <li>最高关卡统计</li>
+                    <li>所有通关时间记录</li>
+                  </ul>
+                  <p className="mt-3 text-red-400 text-xs">
+                    此操作不可撤销，请谨慎选择！
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-lg transition-all"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmAction === 'current') {
+                    clearCurrentLevelRecord();
+                  } else {
+                    clearAllRecords();
+                  }
+                  setConfirmAction(null);
+                  setRecordsVersion(v => v + 1);
+                }}
+                className={`flex-1 px-4 py-2 text-white font-bold rounded-lg transition-all ${
+                  confirmAction === 'current'
+                    ? 'bg-amber-600 hover:bg-amber-500'
+                    : 'bg-red-600 hover:bg-red-500'
+                }`}
+              >
+                确认清除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useOthello } from '../hooks/useOthello';
 import { BOARD_SIZE } from '../utils/othelloUtils';
 import { OthelloMode } from '../types/game';
+import { AiSideSelector } from './AiSideSelector';
+import { ClearCacheButton } from './ClearCacheButton';
 
 interface OthelloGameProps {
   onBack: () => void;
 }
 
 export const OthelloGame = ({ onBack }: OthelloGameProps) => {
-  const { state, best, playerMove, aiMove, reset, setMode } = useOthello();
+  const { state, best, aiSide, playerMove, aiMove, reset, setMode, setAiSide } = useOthello();
   const aiTimerRef = useRef<number | null>(null);
   const [cellSize, setCellSize] = useState(44);
 
@@ -40,8 +42,11 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
     };
   }, []);
 
+  // 人类玩家：与 aiSide 相反
+  const humanPlayer: 1 | 2 = aiSide === 1 ? 2 : 1;
+
   useEffect(() => {
-    if (state.mode === 'pve' && state.currentPlayer === 2 && state.status === 'playing') {
+    if (state.mode === 'pve' && state.currentPlayer === aiSide && state.status === 'playing') {
       aiTimerRef.current = window.setTimeout(() => {
         aiMove();
       }, 600);
@@ -52,7 +57,7 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
         }
       };
     }
-  }, [state.currentPlayer, state.validMoves, state.status, state.mode, aiMove]);
+  }, [state.currentPlayer, state.validMoves, state.status, state.mode, aiMove, aiSide]);
 
   const isValidMove = (row: number, col: number) => {
     return state.validMoves.some(m => m.row === row && m.col === col);
@@ -65,8 +70,8 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
 
   const handleCellClick = (row: number, col: number) => {
     if (state.status !== 'playing') return;
-    // pve 模式只允许玩家1下棋；pvp 模式当前玩家都能下
-    if (state.mode === 'pve' && state.currentPlayer !== 1) return;
+    // pve 模式只允许人类玩家下棋；pvp 模式当前玩家都能下
+    if (state.mode === 'pve' && state.currentPlayer !== humanPlayer) return;
     if (!isValidMove(row, col)) return;
     playerMove(row, col);
   };
@@ -82,31 +87,24 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
         ← 返回首页
       </button>
 
+      <ClearCacheButton storageKeys={['othello_best']} onCleared={() => window.location.reload()} />
+
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-500 mb-4 mt-8">
         ⚫⚪ 黑白棋
       </h1>
 
-      <div className="flex gap-2 mb-3">
-        {(['pve', 'pvp'] as OthelloMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setMode(mode)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              state.mode === mode
-                ? 'bg-emerald-600 text-white shadow-lg'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            }`}
-          >
-            {mode === 'pve' ? '🤖 人机对战' : '👥 双人对战'}
-          </button>
-        ))}
-      </div>
+      <AiSideSelector
+        mode={state.mode}
+        aiSide={aiSide}
+        onChangeMode={(m) => setMode(m)}
+        onChangeAiSide={(s) => setAiSide(s)}
+      />
 
       <div className="flex gap-3 mb-3">
         <div className="bg-black/40 border-2 border-white rounded-xl px-5 py-2">
           <div className="text-slate-300 text-xs flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-black border border-white"></div>
-            {state.mode === 'pve' ? '玩家' : '玩家1'}
+            {state.mode === 'pve' ? (humanPlayer === 1 ? '玩家' : '电脑') : '玩家1'}
           </div>
           <div className="text-3xl font-bold text-white font-mono">{state.blackScore}</div>
         </div>
@@ -119,7 +117,7 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
         <div className="bg-white/20 border-2 border-white rounded-xl px-5 py-2">
           <div className="text-slate-300 text-xs flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-white"></div>
-            {state.mode === 'pve' ? '电脑' : '玩家2'}
+            {state.mode === 'pve' ? (humanPlayer === 2 ? '玩家' : '电脑') : '玩家2'}
           </div>
           <div className="text-3xl font-bold text-white font-mono">{state.whiteScore}</div>
         </div>
@@ -134,8 +132,8 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
             row.map((cell, c) => {
               const valid = isValidMove(r, c);
               const flipCount = getFlipCount(r, c);
-              // 当前玩家是否可以操作（pve 只允许玩家1；pvp 双方都行）
-              const canPlay = state.mode === 'pve' ? state.currentPlayer === 1 : true;
+              // 当前玩家是否可以操作
+              const canPlay = state.mode === 'pve' ? state.currentPlayer === humanPlayer : true;
               return (
                 <button
                   key={`${r}-${c}`}
@@ -169,24 +167,27 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
 
         {state.status === 'won' && (
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center">
-            {winnerPlayer === 1 ? (
+            {state.mode === 'pve' ? (
+              winnerPlayer === humanPlayer ? (
+                <>
+                  <div className="text-5xl mb-2 animate-bounce">🏆</div>
+                  <div className="text-4xl font-bold text-white mb-2 animate-pulse">你赢了！</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-5xl mb-2">💔</div>
+                  <div className="text-4xl font-bold text-white mb-2 animate-pulse">电脑获胜</div>
+                </>
+              )
+            ) : winnerPlayer === 1 ? (
               <>
                 <div className="text-5xl mb-2 animate-bounce">🏆</div>
-                <div className="text-4xl font-bold text-white mb-2 animate-pulse">
-                  {state.mode === 'pve' ? '你赢了！' : '黑棋获胜！'}
-                </div>
-              </>
-            ) : winnerPlayer === 2 ? (
-              <>
-                <div className="text-5xl mb-2">{state.mode === 'pve' ? '💔' : '🏆'}</div>
-                <div className="text-4xl font-bold text-white mb-2 animate-pulse">
-                  {state.mode === 'pve' ? '电脑获胜' : '白棋获胜！'}
-                </div>
+                <div className="text-4xl font-bold text-white mb-2 animate-pulse">黑棋获胜！</div>
               </>
             ) : (
               <>
-                <div className="text-5xl mb-2">🤝</div>
-                <div className="text-4xl font-bold text-yellow-400 mb-2">平局！</div>
+                <div className="text-5xl mb-2">🏆</div>
+                <div className="text-4xl font-bold text-white mb-2 animate-pulse">白棋获胜！</div>
               </>
             )}
             <div className="text-xl text-white mb-2">
@@ -207,7 +208,7 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
           <div className="text-yellow-400 mb-1 animate-pulse">⚠️ 对方无合法落子，已跳过回合</div>
         )}
         <p>点击黄圈位置落子 | 翻转夹住的对方棋子 | 结束时棋子多者胜</p>
-        <p>{state.currentPlayer === 1 ? '✕ 你的回合' : '○ 电脑回合'}</p>
+        <p>{state.currentPlayer === humanPlayer ? '🙋 你的回合' : '🤖 电脑回合'}</p>
       </div>
 
       <div className="flex gap-3 mt-3">
