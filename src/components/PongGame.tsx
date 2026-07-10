@@ -104,6 +104,31 @@ export const PongGame = ({ onBack }: PongGameProps) => {
         </div>
       </div>
 
+      {/* 玩家2控制 - 在游戏上方（移动端） */}
+      <div className="md:hidden w-full mt-3 px-4 select-none">
+        <div className="flex flex-col items-center mb-3">
+          <div className="text-xs text-blue-300 mb-1">🔵 P2</div>
+          <div className="flex gap-2">
+            <button
+              onTouchStart={(e) => { e.preventDefault(); setMobileMove(2, 'left', true); }}
+              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(2, 'left', false); }}
+              onTouchCancel={() => setMobileMove(2, 'left', false)}
+              className="w-14 h-14 bg-blue-700 active:bg-blue-500 text-white text-xl rounded-lg font-bold touch-none"
+            >
+              ←
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); setMobileMove(2, 'right', true); }}
+              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(2, 'right', false); }}
+              onTouchCancel={() => setMobileMove(2, 'right', false)}
+              className="w-14 h-14 bg-blue-700 active:bg-blue-500 text-white text-xl rounded-lg font-bold touch-none"
+            >
+              →
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="relative w-full max-w-2xl">
         <canvas
           ref={canvasRef}
@@ -163,8 +188,8 @@ export const PongGame = ({ onBack }: PongGameProps) => {
         )}
       </div>
 
-      {/* 移动端控制 - 左右分布 */}
-      <div className="md:hidden w-full mt-3 flex justify-between items-center px-4 select-none">
+      {/* 玩家1控制 - 在游戏下方（移动端） */}
+      <div className="md:hidden w-full mt-3 px-4 select-none">
         <div className="flex flex-col items-center">
           <div className="text-xs text-emerald-300 mb-1">🟢 P1</div>
           <div className="flex gap-2">
@@ -172,7 +197,7 @@ export const PongGame = ({ onBack }: PongGameProps) => {
               onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'left', true); }}
               onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'left', false); }}
               onTouchCancel={() => setMobileMove(1, 'left', false)}
-              className="w-16 h-16 bg-emerald-700 active:bg-emerald-500 text-white text-2xl rounded-lg font-bold touch-none"
+              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
             >
               ←
             </button>
@@ -180,28 +205,7 @@ export const PongGame = ({ onBack }: PongGameProps) => {
               onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'right', true); }}
               onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'right', false); }}
               onTouchCancel={() => setMobileMove(1, 'right', false)}
-              className="w-16 h-16 bg-emerald-700 active:bg-emerald-500 text-white text-2xl rounded-lg font-bold touch-none"
-            >
-              →
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="text-xs text-blue-300 mb-1">P2 🔵</div>
-          <div className="flex gap-2">
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(2, 'left', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(2, 'left', false); }}
-              onTouchCancel={() => setMobileMove(2, 'left', false)}
-              className="w-16 h-16 bg-blue-700 active:bg-blue-500 text-white text-2xl rounded-lg font-bold touch-none"
-            >
-              ←
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(2, 'right', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(2, 'right', false); }}
-              onTouchCancel={() => setMobileMove(2, 'right', false)}
-              className="w-16 h-16 bg-blue-700 active:bg-blue-500 text-white text-2xl rounded-lg font-bold touch-none"
+              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
             >
               →
             </button>

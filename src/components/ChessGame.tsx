@@ -9,7 +9,6 @@ type PieceType = 'king' | 'queen' | 'rook' | 'bishop' | 'knight' | 'pawn';
 type Piece = { type: PieceType; color: 1 | 2 };
 
 const BOARD_SIZE = 8;
-const CELL_SIZE = 64;
 
 const createInitialBoard = (): (Piece | null)[][] => {
   const board: (Piece | null)[][] = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null));
@@ -62,6 +61,27 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
   });
   const [status, setStatus] = useState<'playing' | 'won'>('playing');
   const [winner, setWinner] = useState<0 | 1 | 2>(0);
+  const [cellSize, setCellSize] = useState(64);
+
+  useEffect(() => {
+    const checkSize = () => {
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      if (isMobile) {
+        const maxWidth = window.innerWidth - 32;
+        const size = Math.floor(maxWidth / BOARD_SIZE);
+        setCellSize(Math.max(size, 40));
+      } else {
+        setCellSize(64);
+      }
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    window.addEventListener('orientationchange', checkSize);
+    return () => {
+      window.removeEventListener('resize', checkSize);
+      window.removeEventListener('orientationchange', checkSize);
+    };
+  }, []);
 
   const reset = useCallback(() => {
     setBoard(createInitialBoard());
@@ -411,7 +431,7 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
     }
   }, [mode, currentPlayer, status, findBestAiMove, board]);
 
-  const boardSize = BOARD_SIZE * CELL_SIZE;
+  const boardSize = BOARD_SIZE * cellSize;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
@@ -461,22 +481,22 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
                 isLightSquare ? 'bg-slate-700' : 'bg-amber-200'
               } ${isSelected ? 'z-10' : ''}`}
               style={{
-                left: c * CELL_SIZE,
-                top: r * CELL_SIZE,
-                width: CELL_SIZE,
-                height: CELL_SIZE,
+                left: c * cellSize,
+                top: r * cellSize,
+                width: cellSize,
+                height: cellSize,
                 boxShadow: isSelected ? 'inset 0 0 0 4px #facc15' : 'none',
               }}
             >
               {cell && (
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
+                <div className={`rounded-full flex items-center justify-center shadow-lg ${
                   cell.color === 1
                     ? 'bg-white border-2 border-gray-300'
                     : 'bg-gray-900 border-2 border-gray-700'
-                }`}>
-                  <span className={`text-3xl font-bold leading-none ${
+                }`} style={{ width: cellSize * 0.85, height: cellSize * 0.85 }}>
+                  <span className={`font-bold leading-none ${
                     cell.color === 1 ? 'text-gray-800' : 'text-white'
-                  }`}>
+                  }`} style={{ fontSize: cellSize * 0.5 }}>
                     {getPieceSymbol(cell)}
                   </span>
                 </div>
@@ -491,10 +511,10 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
             key={`move-${m.row}-${m.col}`}
             className="absolute pointer-events-none flex items-center justify-center animate-pulse"
             style={{
-              left: m.col * CELL_SIZE,
-              top: m.row * CELL_SIZE,
-              width: CELL_SIZE,
-              height: CELL_SIZE,
+              left: m.col * cellSize,
+              top: m.row * cellSize,
+              width: cellSize,
+              height: cellSize,
             }}
           >
             {board[m.row][m.col] ? (
@@ -502,8 +522,8 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
               <div
                 className="rounded-full"
                 style={{
-                  width: CELL_SIZE - 8,
-                  height: CELL_SIZE - 8,
+                  width: cellSize - 8,
+                  height: cellSize - 8,
                   border: '4px solid #ef4444',
                   boxShadow: '0 0 12px #ef4444',
                   opacity: 0.7,
@@ -514,8 +534,8 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
               <div
                 className="rounded-full"
                 style={{
-                  width: CELL_SIZE / 3,
-                  height: CELL_SIZE / 3,
+                  width: cellSize / 3,
+                  height: cellSize / 3,
                   backgroundColor: '#22c55e',
                   boxShadow: '0 0 8px #22c55e',
                   opacity: 0.8,

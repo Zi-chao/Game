@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOthello } from '../hooks/useOthello';
-import { BOARD_SIZE, CELL_SIZE } from '../utils/othelloUtils';
+import { BOARD_SIZE } from '../utils/othelloUtils';
 import { OthelloMode } from '../types/game';
 
 interface OthelloGameProps {
@@ -10,6 +10,7 @@ interface OthelloGameProps {
 export const OthelloGame = ({ onBack }: OthelloGameProps) => {
   const { state, best, playerMove, aiMove, reset, setMode } = useOthello();
   const aiTimerRef = useRef<number | null>(null);
+  const [cellSize, setCellSize] = useState(44);
 
   // 从sessionStorage读取模式
   useEffect(() => {
@@ -18,6 +19,26 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
       setMode(savedMode);
     }
   }, [setMode]);
+
+  useEffect(() => {
+    const checkSize = () => {
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      if (isMobile) {
+        const maxWidth = window.innerWidth - 20;
+        const size = Math.floor(maxWidth / BOARD_SIZE);
+        setCellSize(Math.max(size, 28));
+      } else {
+        setCellSize(44);
+      }
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    window.addEventListener('orientationchange', checkSize);
+    return () => {
+      window.removeEventListener('resize', checkSize);
+      window.removeEventListener('orientationchange', checkSize);
+    };
+  }, []);
 
   useEffect(() => {
     if (state.mode === 'pve' && state.currentPlayer === 2 && state.status === 'playing') {
@@ -107,7 +128,7 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
       <div className="relative">
         <div
           className="inline-grid gap-1 p-3 bg-emerald-800 rounded-2xl border-4 border-emerald-600 shadow-2xl"
-          style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, ${CELL_SIZE}px)` }}
+          style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, ${cellSize}px)` }}
         >
           {state.board.flatMap((row, r) =>
             row.map((cell, c) => {
@@ -125,7 +146,7 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
                       ? 'cursor-pointer hover:bg-yellow-400/30 hover:scale-105'
                       : 'cursor-default'
                   }`}
-                  style={{ width: CELL_SIZE, height: CELL_SIZE, backgroundColor: '#15803d' }}
+                  style={{ width: cellSize, height: cellSize, backgroundColor: '#15803d' }}
                 >
                   {cell === 0 && valid && canPlay && (
                     <div className="absolute inset-0 flex items-center justify-center">

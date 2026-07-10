@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMemoryGame, MemoryDifficulty } from '../hooks/useMemoryGame';
 import { GRID_SIZES } from '../utils/memoryUtils';
 
@@ -17,8 +17,46 @@ export const MemoryGame = ({ onBack }: MemoryGameProps) => {
   const { state, bestMoves, reset, flipCard } = useMemoryGame(difficulty);
   const config = GRID_SIZES[difficulty];
 
+  const [cardSize, setCardSize] = useState(80);
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      const portrait = window.innerHeight > window.innerWidth;
+      setIsPortrait(mobile && portrait);
+      if (mobile) {
+        const maxWidth = window.innerWidth - 32;
+        const sizeByWidth = Math.floor(maxWidth / config.cols);
+        setCardSize(Math.min(sizeByWidth, 80));
+      } else {
+        setCardSize(80);
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, [config.cols]);
+
+  if (isPortrait) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="text-6xl mb-6">📱</div>
+        <div className="text-2xl font-bold text-white mb-4">请将手机旋转至横屏</div>
+        <div className="text-slate-400 text-center px-8">
+          <p>记忆翻牌游戏需要横屏才能完整显示</p>
+          <p>旋转后即可开始游戏</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -78,21 +116,21 @@ export const MemoryGame = ({ onBack }: MemoryGameProps) => {
       {/* 卡片网格 */}
       <div
         className="inline-grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${config.cols}, 80px)` }}
+        style={{ gridTemplateColumns: `repeat(${config.cols}, ${cardSize}px)` }}
       >
         {state.cards.map(card => (
           <button
             key={card.id}
             onClick={() => flipCard(card.id)}
             disabled={card.isMatched || card.isFlipped}
-            className={`h-20 rounded-xl font-bold text-4xl transition-all transform ${
+            className={`rounded-xl font-bold transition-all transform ${
               card.isMatched
                 ? 'bg-emerald-500/30 border-2 border-emerald-400 scale-95 opacity-60'
                 : card.isFlipped
                 ? 'bg-rose-500 border-2 border-rose-300 -translate-y-1'
                 : 'bg-gradient-to-br from-rose-600 to-pink-700 border-2 border-rose-400 hover:scale-105 hover:-translate-y-1 shadow-lg cursor-pointer'
             }`}
-            style={{ width: 80, height: 80 }}
+            style={{ width: cardSize, height: cardSize, fontSize: cardSize * 0.5 }}
           >
             {card.isFlipped || card.isMatched ? card.emoji : '?'}
           </button>

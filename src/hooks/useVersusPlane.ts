@@ -84,6 +84,32 @@ export const useVersusPlane = () => {
     });
   }, []);
 
+  const setPlayer1X = useCallback((x: number) => {
+    setState(prev => ({
+      ...prev,
+      player1X: Math.max(0, Math.min(GAME_WIDTH - PLAYER_WIDTH, x)),
+    }));
+  }, []);
+
+  const setPlayer2X = useCallback((x: number) => {
+    setState(prev => ({
+      ...prev,
+      player2X: Math.max(0, Math.min(GAME_WIDTH - PLAYER_WIDTH, x)),
+    }));
+  }, []);
+
+  const fire1 = useCallback(() => {
+    // 按钮点击：添加 fire1_button 标记，gameLoop 会检测并发射
+    keysPressed.current.add('fire1_button');
+    setTimeout(() => keysPressed.current.delete('fire1_button'), 80);
+  }, []);
+
+  const fire2 = useCallback(() => {
+    // 按钮点击：添加 fire2_button 标记，gameLoop 会检测并发射
+    keysPressed.current.add('fire2_button');
+    setTimeout(() => keysPressed.current.delete('fire2_button'), 80);
+  }, []);
+
   const start = useCallback(() => {
     if (gameLoopRef.current) {
       cancelAnimationFrame(gameLoopRef.current);
@@ -137,8 +163,12 @@ export const useVersusPlane = () => {
         player2X = Math.min(GAME_WIDTH - PLAYER_WIDTH, player2X + PLAYER_SPEED);
       }
 
-      // 玩家1射击（向上）
-      if (keysPressed.current.has(' ') && currentTime - lastShot1Ref.current > FIRE_INTERVAL) {
+      // 玩家1射击 - 统一检测（键盘空格 或 按钮触发）
+      const fire1Triggered =
+        keysPressed.current.has(' ') ||
+        keysPressed.current.has('fire1_button') ||
+        keysPressed.current.has('fire1_pressed');
+      if (fire1Triggered && currentTime - lastShot1Ref.current > FIRE_INTERVAL) {
         lastShot1Ref.current = currentTime;
         bullets.push({
           x: player1X + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2,
@@ -147,8 +177,12 @@ export const useVersusPlane = () => {
         });
       }
 
-      // 玩家2射击（向下）
-      if (keysPressed.current.has('enter') && currentTime - lastShot2Ref.current > FIRE_INTERVAL) {
+      // 玩家2射击 - 统一检测（键盘回车 或 按钮触发）
+      const fire2Triggered =
+        keysPressed.current.has('enter') ||
+        keysPressed.current.has('fire2_button') ||
+        keysPressed.current.has('fire2_pressed');
+      if (fire2Triggered && currentTime - lastShot2Ref.current > FIRE_INTERVAL) {
         lastShot2Ref.current = currentTime;
         bullets.push({
           x: player2X + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2,
@@ -281,5 +315,9 @@ export const useVersusPlane = () => {
     start,
     reset,
     togglePause,
+    setPlayer1X,
+    setPlayer2X,
+    fire1,
+    fire2,
   };
 };

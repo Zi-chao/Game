@@ -21,6 +21,7 @@ import { VersusSnakeGame } from './components/VersusSnakeGame';
 import { VersusPlaneGame } from './components/VersusPlaneGame';
 import { PongGame } from './components/PongGame';
 import { Page, OthelloMode } from './types/game';
+import { useRouter, getBackPage } from './utils/router';
 
 interface DialogState {
   show: boolean;
@@ -30,7 +31,7 @@ interface DialogState {
 }
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const { currentPage, navigate, back } = useRouter();
   const [dialogState, setDialogState] = useState<DialogState>({
     show: false,
     page: 'home',
@@ -39,7 +40,7 @@ function App() {
   });
 
   const handleSelectMode = (page: Page) => {
-    setCurrentPage(page);
+    navigate(page);
   };
 
   const handleSelectGame = (page: Page) => {
@@ -62,29 +63,24 @@ function App() {
         emoji: info.emoji,
       });
     } else {
-      setCurrentPage(page);
+      navigate(page);
     }
   };
 
   const handleSelectBoardGameMode = (mode: OthelloMode) => {
     // 将模式保存到 sessionStorage，让游戏组件读取
     sessionStorage.setItem(`game_mode_${dialogState.page}`, mode);
+    const targetPage = dialogState.page;
     setDialogState({ ...dialogState, show: false });
-    setCurrentPage(dialogState.page);
+    navigate(targetPage);
   };
 
   const handleBack = () => {
-    const singleGames = ['snake', 'tetris', 'plane', 'minesweeper', 'tank', 'memory', 'hop'];
-    const versusGames = ['snake-versus', 'plane-versus', 'pong'];
-    const boardGames = ['gomoku', 'othello', 'tictactoe', 'connectfour', 'xiangqi', 'chess'];
-    if (singleGames.includes(currentPage)) {
-      setCurrentPage('single-mode');
-    } else if (versusGames.includes(currentPage)) {
-      setCurrentPage('versus-mode');
-    } else if (boardGames.includes(currentPage)) {
-      setCurrentPage('board-games');
+    const backPage = getBackPage(currentPage);
+    if (window.history.length > 1 && backPage !== 'home') {
+      back();
     } else {
-      setCurrentPage('home');
+      navigate(backPage);
     }
   };
 

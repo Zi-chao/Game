@@ -47,12 +47,28 @@ export const useSnakeGame = () => {
   }, []);
 
   const startGame = useCallback(() => {
-    setGameState(prev => ({
-      ...prev,
-      isPlaying: true,
-      isGameOver: false,
-      isPaused: false,
-    }));
+    setGameState(prev => {
+      if (prev.isGameOver) {
+        const snake = getInitialSnake();
+        directionRef.current = 'RIGHT';
+        return {
+          ...prev,
+          snake,
+          food: getRandomFood(snake),
+          direction: 'RIGHT',
+          score: 0,
+          isPlaying: true,
+          isGameOver: false,
+          isPaused: false,
+        };
+      }
+      return {
+        ...prev,
+        isPlaying: true,
+        isGameOver: false,
+        isPaused: false,
+      };
+    });
   }, []);
 
   const togglePause = useCallback(() => {

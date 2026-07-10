@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGomoku } from '../hooks/useGomoku';
-import { BOARD_SIZE, CELL_SIZE } from '../utils/gomokuUtils';
+import { BOARD_SIZE } from '../utils/gomokuUtils';
 import { GomokuMode } from '../types/game';
 
 interface GomokuGameProps {
@@ -9,6 +9,7 @@ interface GomokuGameProps {
 
 export const GomokuGame = ({ onBack }: GomokuGameProps) => {
   const { state, best, reset, placeStone, setMode } = useGomoku();
+  const [cellSize, setCellSize] = useState(36);
 
   // 从sessionStorage读取模式
   useEffect(() => {
@@ -17,6 +18,26 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
       setMode(savedMode);
     }
   }, [setMode]);
+
+  useEffect(() => {
+    const checkSize = () => {
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      if (isMobile) {
+        const maxWidth = window.innerWidth - 32;
+        const size = Math.floor(maxWidth / BOARD_SIZE);
+        setCellSize(Math.max(size, 24));
+      } else {
+        setCellSize(36);
+      }
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    window.addEventListener('orientationchange', checkSize);
+    return () => {
+      window.removeEventListener('resize', checkSize);
+      window.removeEventListener('orientationchange', checkSize);
+    };
+  }, []);
 
   // 点击位置转格子坐标：点击 canvas 任意位置，找出最近的可下子格子
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -27,14 +48,14 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const col = Math.round(x / CELL_SIZE);
-    const row = Math.round(y / CELL_SIZE);
+    const col = Math.round(x / cellSize);
+    const row = Math.round(y / cellSize);
 
-    const exactX = col * CELL_SIZE;
-    const exactY = row * CELL_SIZE;
+    const exactX = col * cellSize;
+    const exactY = row * cellSize;
     const distance = Math.sqrt(Math.pow(x - exactX, 2) + Math.pow(y - exactY, 2));
 
-    if (distance > CELL_SIZE / 3) return;
+    if (distance > cellSize / 3) return;
 
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
     if (state.board[row][col] !== 0) return;
@@ -42,8 +63,8 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
     placeStone(row, col);
   };
 
-  const boardWidth = (BOARD_SIZE - 1) * CELL_SIZE;
-  const padding = CELL_SIZE / 2;
+  const boardWidth = (BOARD_SIZE - 1) * cellSize;
+  const padding = cellSize / 2;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-950 via-slate-900 to-amber-950 flex flex-col items-center justify-center p-4 relative">
@@ -123,16 +144,16 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
               <g key={i}>
                 <line
                   x1={0}
-                  y1={i * CELL_SIZE}
+                  y1={i * cellSize}
                   x2={boardWidth}
-                  y2={i * CELL_SIZE}
+                  y2={i * cellSize}
                   stroke="#3b1f00"
                   strokeWidth="1"
                 />
                 <line
-                  x1={i * CELL_SIZE}
+                  x1={i * cellSize}
                   y1={0}
-                  x2={i * CELL_SIZE}
+                  x2={i * cellSize}
                   y2={boardWidth}
                   stroke="#3b1f00"
                   strokeWidth="1"
@@ -145,8 +166,8 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
             ].map(([r, c], i) => (
               <circle
                 key={i}
-                cx={c * CELL_SIZE}
-                cy={r * CELL_SIZE}
+                cx={c * cellSize}
+                cy={r * cellSize}
                 r="3"
                 fill="#3b1f00"
               />
@@ -159,8 +180,8 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.1) 1px, transparent 1px)',
-                backgroundSize: `${CELL_SIZE}px ${CELL_SIZE}px`,
-                backgroundPosition: `${CELL_SIZE / 2}px ${CELL_SIZE / 2}px`,
+                backgroundSize: `${cellSize}px ${cellSize}px`,
+                backgroundPosition: `${cellSize / 2}px ${cellSize / 2}px`,
               }}
             />
           )}
@@ -178,10 +199,10 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
                       : 'bg-gradient-to-br from-white to-gray-300 border border-gray-200'
                   }`}
                   style={{
-                    left: c * CELL_SIZE - CELL_SIZE / 2 + 2,
-                    top: r * CELL_SIZE - CELL_SIZE / 2 + 2,
-                    width: CELL_SIZE - 4,
-                    height: CELL_SIZE - 4,
+                    left: c * cellSize - cellSize / 2 + 2,
+                    top: r * cellSize - cellSize / 2 + 2,
+                    width: cellSize - 4,
+                    height: cellSize - 4,
                   }}
                 />
               );

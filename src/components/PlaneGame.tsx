@@ -8,6 +8,7 @@ import {
   BULLET_WIDTH,
   BULLET_HEIGHT,
 } from '../utils/planeUtils';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface PlaneGameProps {
   onBack: () => void;
@@ -16,6 +17,16 @@ interface PlaneGameProps {
 export const PlaneGame = ({ onBack }: PlaneGameProps) => {
   const { gameState, startGame, togglePause, resetGame, setPlayerX } = usePlaneGame();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // 无极移动：触摸位置直接映射到飞机位置
+  const handleTouch = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const targetX = (x / rect.width) * GAME_WIDTH - PLAYER_WIDTH / 2;
+    setPlayerX(targetX);
+  };
 
   // 绘制游戏
   useEffect(() => {
@@ -107,18 +118,9 @@ export const PlaneGame = ({ onBack }: PlaneGameProps) => {
     }
   }, [gameState]);
 
-  // 触屏控制
-  const handleTouch = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const targetX = (x / rect.width) * GAME_WIDTH - PLAYER_WIDTH / 2;
-    setPlayerX(targetX);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+      <OrientationPrompt />
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -218,9 +220,12 @@ export const PlaneGame = ({ onBack }: PlaneGameProps) => {
         </button>
       </div>
 
-      <div className="mt-4 text-slate-400 text-xs text-center">
-        <p className="hidden md:block">← → 移动 | 空格 自动射击 | P 暂停 | R 重新开始</p>
-        <p className="md:hidden">触屏左右滑动控制飞机</p>
+      <div className="mt-4 text-slate-400 text-xs text-center hidden md:block">
+        <p>← → 移动 | 空格 自动射击 | P 暂停 | R 重新开始</p>
+      </div>
+
+      <div className="mt-2 text-slate-400 text-xs text-center md:hidden">
+        <p>触摸屏幕控制飞机移动</p>
       </div>
     </div>
   );

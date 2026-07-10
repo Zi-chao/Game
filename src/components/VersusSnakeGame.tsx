@@ -100,7 +100,40 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
         ← 返回
       </button>
 
-      <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-6 md:mt-8">
+      {/* 玩家2控制 - 倒置显示在标题上方，按键镜像 */}
+      <div className="md:hidden w-full mt-2 px-3 select-none">
+        <div className="text-xs text-blue-300 text-center mb-1">🔵 玩家2 (倒着玩)</div>
+        <div className="flex flex-col items-center gap-1 rotate-180">
+          <button
+            onTouchStart={(e) => { e.preventDefault(); changeDirection2('DOWN'); }}
+            className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
+          >
+            ↑
+          </button>
+          <div className="flex gap-1">
+            <button
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('RIGHT'); }}
+              className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
+            >
+              ←
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('UP'); }}
+              className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
+            >
+              ↓
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); changeDirection2('LEFT'); }}
+              className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
+            >
+              →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-4 md:mt-8">
         🐍 贪吃蛇对战
       </h1>
 
@@ -108,11 +141,11 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
       <div className="flex gap-2 md:gap-4 mb-2 md:mb-3">
         <div className="bg-emerald-900/40 border-2 border-emerald-500 rounded-xl px-3 py-1.5 md:px-5 md:py-2">
           <div className="text-emerald-300 text-xs">🟢 玩家1</div>
-          <div className="text-2xl md:text-3xl font-bold text-emerald-400 font-mono">{state.score1}</div>
+          <div className="text-xl md:text-3xl font-bold text-emerald-400 font-mono">{state.score1}</div>
         </div>
         <div className="bg-blue-900/40 border-2 border-blue-500 rounded-xl px-3 py-1.5 md:px-5 md:py-2">
           <div className="text-blue-300 text-xs">🔵 玩家2</div>
-          <div className="text-2xl md:text-3xl font-bold text-blue-400 font-mono">{state.score2}</div>
+          <div className="text-xl md:text-3xl font-bold text-blue-400 font-mono">{state.score2}</div>
         </div>
       </div>
 
@@ -122,7 +155,7 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
           width={VERSUS_GRID_SIZE * VERSUS_CELL_SIZE}
           height={VERSUS_GRID_SIZE * VERSUS_CELL_SIZE}
           className="rounded-lg shadow-2xl border-2 md:border-4 border-emerald-700 max-w-full"
-          style={{ maxHeight: '60vh', height: 'auto' }}
+          style={{ maxHeight: '55vh', height: 'auto' }}
         />
 
         {(state.winner !== null || !state.isPlaying) && (
@@ -178,75 +211,42 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
         )}
       </div>
 
-      {/* 移动端控制 - 左右分布 */}
-      <div className="md:hidden w-full mt-3 flex justify-between items-start px-3 select-none">
-        <div className="flex flex-col items-center">
-          <div className="text-xs text-emerald-300 mb-1">🟢 玩家1</div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <div></div>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection1('UP'); }}
-              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
-            >
-              W
-            </button>
-            <div></div>
+      {/* 玩家1控制 - 在游戏下方 */}
+      <div className="md:hidden w-full mt-2 px-3 select-none">
+        <div className="text-xs text-emerald-300 text-center mb-1">🟢 玩家1</div>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onTouchStart={(e) => { e.preventDefault(); changeDirection1('UP'); }}
+            className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
+          >
+            W
+          </button>
+          <div className="flex gap-1">
             <button
               onTouchStart={(e) => { e.preventDefault(); changeDirection1('LEFT'); }}
-              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
+              className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
             >
               A
             </button>
             <button
               onTouchStart={(e) => { e.preventDefault(); changeDirection1('DOWN'); }}
-              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
+              className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
             >
               S
             </button>
             <button
               onTouchStart={(e) => { e.preventDefault(); changeDirection1('RIGHT'); }}
-              className="w-12 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-lg rounded-lg font-bold touch-none"
+              className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
             >
               D
             </button>
           </div>
         </div>
-        <div className="flex flex-col items-center">
-          <div className="text-xs text-blue-300 mb-1">🔵 玩家2</div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <div></div>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('UP'); }}
-              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
-            >
-              ↑
-            </button>
-            <div></div>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('LEFT'); }}
-              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
-            >
-              ←
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('DOWN'); }}
-              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
-            >
-              ↓
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('RIGHT'); }}
-              className="w-12 h-12 bg-blue-700 active:bg-blue-500 text-white text-lg rounded-lg font-bold touch-none"
-            >
-              →
-            </button>
-          </div>
-        </div>
       </div>
 
-      <div className="mt-4 text-slate-400 text-xs text-center">
+      <div className="mt-2 md:mt-4 text-slate-400 text-xs text-center">
         <p className="hidden md:block">🟢 WASD | 🔵 方向键 | 空格 开始/暂停 | R 重置</p>
-        <p className="md:hidden">玩家1点左侧按钮 / 玩家2点右侧按钮</p>
+        <p className="md:hidden">玩家1点下方按钮 / 玩家2点上方按钮(倒置)</p>
       </div>
     </div>
   );

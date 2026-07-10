@@ -289,8 +289,51 @@ export const TetrisGame = ({ onBack }: TetrisGameProps) => {
         </button>
       </div>
 
-      <div className="mt-4 text-slate-400 text-xs text-center">
+      <div className="mt-4 text-slate-400 text-xs text-center hidden md:block">
         <p>← → 移动 | ↑ 旋转 | ↓ 加速 | 空格 瞬间落下 | P 暂停 | R 重新开始</p>
+      </div>
+
+      {/* 移动端控制 */}
+      <div className="md:hidden w-full mt-3 px-3 select-none">
+        <div className="text-xs text-purple-300 text-center mb-2">点击按钮控制</div>
+        <div className="flex justify-center gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onTouchStart={(e) => { e.preventDefault(); move(-1, 0); }}
+              className="w-14 h-14 bg-purple-700 active:bg-purple-500 text-white text-2xl rounded-lg font-bold touch-none"
+            >
+              ←
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); move(1, 0); }}
+              className="w-14 h-14 bg-purple-700 active:bg-purple-500 text-white text-2xl rounded-lg font-bold touch-none"
+            >
+              →
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); rotatePiece(); }}
+              className="w-14 h-14 bg-purple-700 active:bg-purple-500 text-white text-xl rounded-lg font-bold touch-none"
+            >
+              ↻
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); move(0, 1); }}
+              className="w-14 h-14 bg-purple-700 active:bg-purple-500 text-white text-2xl rounded-lg font-bold touch-none"
+            >
+              ↓
+            </button>
+          </div>
+          <button
+            onTouchStart={(e) => { e.preventDefault(); hardDrop(); }}
+            className="w-14 h-28 bg-purple-800 active:bg-purple-600 text-white text-sm rounded-lg font-bold touch-none flex flex-col items-center justify-center"
+          >
+            ⬇<br/>瞬间
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-2 text-slate-400 text-xs text-center md:hidden">
+        <p>触屏按钮控制方块移动</p>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useHop } from '../hooks/useHop';
-import { HOP_GRID_SIZE, HOP_CELL_SIZE } from '../utils/hopUtils';
+import { HOP_GRID_SIZE } from '../utils/hopUtils';
 
 interface HopGameProps {
   onBack: () => void;
@@ -7,6 +8,8 @@ interface HopGameProps {
 
 export const HopGame = ({ onBack }: HopGameProps) => {
   const { state, totalLevels, reset, restartLevel, hopTo, nextLevel } = useHop();
+  const [cellSize, setCellSize] = useState(50);
+  const [isPortrait, setIsPortrait] = useState(false);
 
   const isVisited = (row: number, col: number): boolean => {
     return state.visited.some(v => v.row === row && v.col === col);
@@ -23,8 +26,43 @@ export const HopGame = ({ onBack }: HopGameProps) => {
   const visitedCount = state.visited.length;
   const totalCount = state.level.dots.length;
 
+  useEffect(() => {
+    const checkSize = () => {
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+      const portrait = window.innerHeight > window.innerWidth;
+      setIsPortrait(isMobile && portrait);
+      if (isMobile) {
+        const maxWidth = window.innerWidth - 32;
+        const size = Math.floor(maxWidth / HOP_GRID_SIZE);
+        setCellSize(Math.min(size, 50));
+      } else {
+        setCellSize(50);
+      }
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    window.addEventListener('orientationchange', checkSize);
+    return () => {
+      window.removeEventListener('resize', checkSize);
+      window.removeEventListener('orientationchange', checkSize);
+    };
+  }, []);
+
+  if (isPortrait) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center">
+        <div className="text-6xl mb-6">📱</div>
+        <div className="text-2xl font-bold text-white mb-4">请将手机旋转至横屏</div>
+        <div className="text-slate-400 text-center px-8">
+          <p>跳跳乐游戏需要横屏才能完整显示</p>
+          <p>旋转后即可开始游戏</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -65,8 +103,8 @@ export const HopGame = ({ onBack }: HopGameProps) => {
       {/* 游戏棋盘 */}
       <div className="relative">
         <div
-          className="inline-grid gap-1 p-3 bg-slate-800 rounded-xl border-4 border-fuchsia-700 shadow-2xl"
-          style={{ gridTemplateColumns: `repeat(${HOP_GRID_SIZE}, ${HOP_CELL_SIZE}px)` }}
+          className="inline-grid gap-1 p-2 md:p-3 bg-slate-800 rounded-xl border-2 md:border-4 border-fuchsia-700 shadow-2xl"
+          style={{ gridTemplateColumns: `repeat(${HOP_GRID_SIZE}, ${cellSize}px)` }}
         >
           {Array.from({ length: HOP_GRID_SIZE * HOP_GRID_SIZE }).map((_, idx) => {
             const row = Math.floor(idx / HOP_GRID_SIZE);
@@ -89,9 +127,9 @@ export const HopGame = ({ onBack }: HopGameProps) => {
                     ? 'bg-slate-700 hover:bg-fuchsia-600 border border-slate-600 hover:scale-105 cursor-pointer'
                     : 'bg-slate-900/30 border border-slate-800'
                 }`}
-                style={{ width: HOP_CELL_SIZE, height: HOP_CELL_SIZE }}
+                style={{ width: cellSize, height: cellSize }}
               >
-                {current && <span className="text-2xl">🦘</span>}
+                {current && <span style={{ fontSize: cellSize * 0.4 }}>🦘</span>}
                 {visited && !current && (
                   <div className="w-2 h-2 rounded-full bg-emerald-300"></div>
                 )}
@@ -104,10 +142,10 @@ export const HopGame = ({ onBack }: HopGameProps) => {
         <svg
           className="absolute pointer-events-none"
           style={{
-            top: 12,
-            left: 12,
-            width: HOP_GRID_SIZE * HOP_CELL_SIZE + (HOP_GRID_SIZE - 1),
-            height: HOP_GRID_SIZE * HOP_CELL_SIZE + (HOP_GRID_SIZE - 1),
+            top: 8,
+            left: 8,
+            width: HOP_GRID_SIZE * cellSize + (HOP_GRID_SIZE - 1),
+            height: HOP_GRID_SIZE * cellSize + (HOP_GRID_SIZE - 1),
           }}
         >
           {state.visited.map((v, i) => {
@@ -116,10 +154,10 @@ export const HopGame = ({ onBack }: HopGameProps) => {
             return (
               <line
                 key={i}
-                x1={prev.col * (HOP_CELL_SIZE + 1) + HOP_CELL_SIZE / 2}
-                y1={prev.row * (HOP_CELL_SIZE + 1) + HOP_CELL_SIZE / 2}
-                x2={v.col * (HOP_CELL_SIZE + 1) + HOP_CELL_SIZE / 2}
-                y2={v.row * (HOP_CELL_SIZE + 1) + HOP_CELL_SIZE / 2}
+                x1={prev.col * (cellSize + 1) + cellSize / 2}
+                y1={prev.row * (cellSize + 1) + cellSize / 2}
+                x2={v.col * (cellSize + 1) + cellSize / 2}
+                y2={v.row * (cellSize + 1) + cellSize / 2}
                 stroke="#ec4899"
                 strokeWidth="3"
                 opacity="0.6"

@@ -6,16 +6,22 @@ interface OrientationPromptProps {
 
 export const OrientationPrompt = ({ message = '请将设备旋转至横屏以获得最佳体验' }: OrientationPromptProps) => {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    return localStorage.getItem('orientation_prompt_dismissed') === 'true';
+  });
 
   useEffect(() => {
+    if (isDismissed) {
+      setShowPrompt(false);
+      return;
+    }
+
     const checkOrientation = () => {
-      // 只在移动设备上提示
       const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
       if (!isMobile) {
         setShowPrompt(false);
         return;
       }
-      // 检测竖屏
       const isPortrait = window.innerHeight > window.innerWidth;
       setShowPrompt(isPortrait);
     };
@@ -28,15 +34,28 @@ export const OrientationPrompt = ({ message = '请将设备旋转至横屏以获
       window.removeEventListener('resize', checkOrientation);
       window.removeEventListener('orientationchange', checkOrientation);
     };
-  }, []);
+  }, [isDismissed]);
+
+  const handleClose = () => {
+    setIsDismissed(true);
+    setShowPrompt(false);
+    localStorage.setItem('orientation_prompt_dismissed', 'true');
+  };
 
   if (!showPrompt) return null;
 
   return (
-    <div className="orientation-prompt" style={{ display: 'flex' }}>
-      <div className="icon">📱</div>
-      <div className="text-xl font-bold mb-2">横屏模式</div>
-      <div className="text-sm text-slate-300 max-w-xs">{message}</div>
+    <div className="orientation-prompt">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">📱</span>
+        <span className="text-sm text-white">{message}</span>
+      </div>
+      <button
+        onClick={handleClose}
+        className="orientation-close-btn"
+      >
+        ×
+      </button>
     </div>
   );
 };

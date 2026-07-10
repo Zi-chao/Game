@@ -8,4 +8,11 @@ export default defineConfig({
     strictPort: false,
     host: '0.0.0.0',
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+      },
+    },
+  },
 })
