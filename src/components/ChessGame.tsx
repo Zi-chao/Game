@@ -56,7 +56,10 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
   const [board, setBoard] = useState<(Piece | null)[][]>(createInitialBoard);
   const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
-  const [mode, setMode] = useState<OthelloMode>('pvp');
+  const [mode, setMode] = useState<OthelloMode>(() => {
+    const saved = sessionStorage.getItem('game_mode_chess') as OthelloMode | null;
+    return saved === 'pve' || saved === 'pvp' ? saved : 'pvp';
+  });
   const [status, setStatus] = useState<'playing' | 'won'>('playing');
   const [winner, setWinner] = useState<0 | 1 | 2>(0);
 
@@ -207,8 +210,27 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
     return moves;
   }, [board, currentPlayer]);
 
-  const evaluateBoard = (boardState: (Piece | null)[][]): number => {
-    let score = 0;
+  const getMovesForColorChess = (boardState: (Piece | null)[][], color: 1 | 2): Array<{ fromRow: number; fromCol: number; toRow: number; toCol: number }> => {
+    const moves: Array<{ fromRow: number; fromCol: number; toRow: number; toCol: number }> = [];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        const piece = boardState[r][c];
+        if (piece && piece.color === color) {
+          for (let tr = 0; tr < BOARD_SIZE; tr++) {
+            for (let tc = 0; tc < BOARD_SIZE; tc++) {
+              if (isValidMove(r, c, tr, tc)) {
+                moves.push({ fromRow: r, fromCol: c, toRow: tr, toCol: tc });
+              }
+            }
+          }
+        }
+      }
+    }
+    return moves;
+  };
+
+  const evaluateBoardChess = (boardState: (Piece | null)[][]): number => {
+    // AI 是玩家2，所以从玩家2视角评估
     const pieceValues: Record<PieceType, number> = {
       king: 10000,
       queen: 900,
@@ -218,20 +240,29 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       pawn: 100,
     };
 
+    let score = 0;
     for (let r = 0; r < BOARD_SIZE; r++) {
       for (let c = 0; c < BOARD_SIZE; c++) {
         const piece = boardState[r][c];
         if (piece) {
           const baseValue = pieceValues[piece.type];
+          // AI = color 2 为正向
           const multiplier = piece.color === 2 ? 1 : -1;
           let positionBonus = 0;
 
+          // 位置奖励：中心化、推进
           if (piece.type === 'pawn') {
-            if (piece.color === 1) {
-              positionBonus = (7 - r) * 20;
-            } else {
-              positionBonus = r * 20;
-            }
+            // 越靠近对方底线越好
+            if (piece.color === 2) positionBonus = r * 15;
+            else positionBonus = (BOARD_SIZE - 1 - r) * 15;
+          } else if (piece.type === 'knight' || piece.type === 'bishop') {
+            // 中心化
+            const centerDist = Math.abs(c - 3.5) + Math.abs(r - 3.5);
+            positionBonus = (7 - centerDist) * 5;
+          } else if (piece.type === 'king') {
+            // 开局阶段王应该在后方
+            if (piece.color === 2 && r < 2) positionBonus = 20;
+            if (piece.color === 1 && r > 5) positionBonus = 20;
           }
 
           score += multiplier * (baseValue + positionBonus);
@@ -241,25 +272,109 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
     return score;
   };
 
+  const minimaxChess = (
+    boardState: (Piece | null)[][],
+    depth: number,
+    isMaximizing: boolean,
+    alpha: number,
+    beta: number,
+  ): number => {
+    if (depth === 0) {
+      return evaluateBoardChess(boardState);
+    }
+
+    const color = isMaximizing ? 2 : 1;
+    const moves = getMovesForColorChess(boardState, color);
+
+    if (moves.length === 0) {
+      return isMaximizing ? -100000 : 100000;
+    }
+
+    if (isMaximizing) {
+      let maxEval = -Infinity;
+      for (const move of moves) {
+        const newBoard = boardState.map(r => [...r]);
+        const movingPiece = newBoard[move.fromRow][move.fromCol];
+        newBoard[move.toRow][move.toCol] = movingPiece;
+        newBoard[move.fromRow][move.fromCol] = null;
+
+        // 兵升变
+        if (movingPiece?.type === 'pawn' && move.toRow === 0) {
+          newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
+        }
+
+        const score = minimaxChess(newBoard, depth - 1, false, alpha, beta);
+        maxEval = Math.max(maxEval, score);
+        alpha = Math.max(alpha, score);
+        if (beta <= alpha) break;
+      }
+      return maxEval;
+    } else {
+      let minEval = Infinity;
+      for (const move of moves) {
+        const newBoard = boardState.map(r => [...r]);
+        const movingPiece = newBoard[move.fromRow][move.fromCol];
+        newBoard[move.toRow][move.toCol] = movingPiece;
+        newBoard[move.fromRow][move.fromCol] = null;
+
+        // 兵升变
+        if (movingPiece?.type === 'pawn' && move.toRow === BOARD_SIZE - 1) {
+          newBoard[move.toRow][move.toCol] = { type: 'queen', color: 1 };
+        }
+
+        const score = minimaxChess(newBoard, depth - 1, true, alpha, beta);
+        minEval = Math.min(minEval, score);
+        beta = Math.min(beta, score);
+        if (beta <= alpha) break;
+      }
+      return minEval;
+    }
+  };
+
   const findBestAiMove = useCallback((): { fromRow: number; fromCol: number; toRow: number; toCol: number } | null => {
     const moves = getAllValidMoves;
     if (moves.length === 0) return null;
 
-    let bestMove = moves[0];
+    // 优先吃王
+    for (const move of moves) {
+      const target = board[move.toRow][move.toCol];
+      if (target?.type === 'king') {
+        return move;
+      }
+    }
+
+    // 走法排序：吃子走法优先
+    const moveOrder = [...moves].sort((a, b) => {
+      const targetA = board[a.toRow][a.toCol];
+      const targetB = board[b.toRow][b.toCol];
+      const valueA = targetA ? ({ king: 10000, queen: 900, rook: 500, bishop: 330, knight: 320, pawn: 100 }[targetA.type]) : 0;
+      const valueB = targetB ? ({ king: 10000, queen: 900, rook: 500, bishop: 330, knight: 320, pawn: 100 }[targetB.type]) : 0;
+      return valueB - valueA;
+    }).slice(0, 25);
+
+    const DEPTH = 3;
+    let bestMove = moveOrder[0];
     let bestScore = -Infinity;
 
-    for (const move of moves) {
+    for (const move of moveOrder) {
       const newBoard = board.map(r => [...r]);
-      newBoard[move.toRow][move.toCol] = newBoard[move.fromRow][move.fromCol];
+      const movingPiece = newBoard[move.fromRow][move.fromCol];
+      newBoard[move.toRow][move.toCol] = movingPiece;
       newBoard[move.fromRow][move.fromCol] = null;
 
-      if (newBoard[move.toRow][move.toCol]?.type === 'pawn') {
-        if ((currentPlayer === 1 && move.toRow === 0) || (currentPlayer === 2 && move.toRow === 7)) {
-          newBoard[move.toRow][move.toCol] = { type: 'queen', color: currentPlayer };
-        }
+      // 兵升变
+      let immediateScore = 0;
+      if (movingPiece?.type === 'pawn' && move.toRow === 0) {
+        newBoard[move.toRow][move.toCol] = { type: 'queen', color: 2 };
+        immediateScore += 800;
       }
 
-      const score = evaluateBoard(newBoard);
+      const captured = board[move.toRow][move.toCol];
+      if (captured) {
+        immediateScore += ({ king: 10000, queen: 900, rook: 500, bishop: 330, knight: 320, pawn: 100 }[captured.type]) * 1.2;
+      }
+
+      const score = minimaxChess(newBoard, DEPTH - 1, false, -Infinity, Infinity) + immediateScore;
       if (score > bestScore) {
         bestScore = score;
         bestMove = move;

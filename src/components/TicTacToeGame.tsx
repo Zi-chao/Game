@@ -10,6 +10,14 @@ export const TicTacToeGame = ({ onBack }: TicTacToeGameProps) => {
   const { state, best, makeMove, aiMakeMove, reset, setMode } = useTicTacToe();
   const aiTimerRef = useRef<number | null>(null);
 
+  // 从sessionStorage读取模式
+  useEffect(() => {
+    const savedMode = sessionStorage.getItem('game_mode_tictactoe') as OthelloMode | null;
+    if (savedMode && (savedMode === 'pve' || savedMode === 'pvp')) {
+      setMode(savedMode);
+    }
+  }, [setMode]);
+
   // AI 自动落子
   useEffect(() => {
     if (state.mode === 'pve' && state.currentPlayer === 2 && state.status === 'playing') {

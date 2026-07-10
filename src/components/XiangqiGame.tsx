@@ -74,7 +74,10 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
   const [board, setBoard] = useState<(Piece | null)[][]>(createInitialBoard);
   const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(2);
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
-  const [mode, setMode] = useState<OthelloMode>('pvp');
+  const [mode, setMode] = useState<OthelloMode>(() => {
+    const saved = sessionStorage.getItem('game_mode_xiangqi') as OthelloMode | null;
+    return saved === 'pve' || saved === 'pvp' ? saved : 'pvp';
+  });
   const [status, setStatus] = useState<'playing' | 'won'>('playing');
   const [winner, setWinner] = useState<0 | 1 | 2>(0);
   const [check, setCheck] = useState<0 | 1 | 2>(0);

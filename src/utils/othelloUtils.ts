@@ -100,52 +100,121 @@ export const countPieces = (board: OthelloCell[][]): { black: number; white: num
   return { black, white };
 };
 
-// AI: 选择翻转最多对方棋子的位置，加上位置权重
+// 评估函数：从AI视角评估整个棋盘
+const evaluateBoard = (board: OthelloCell[][], aiPlayer: OthelloCell): number => {
+  const opponent = aiPlayer === 1 ? 2 : 1;
+
+  // 位置权重表（角落和边缘权重高）
+  const weights = [
+    [100, -20, 10, 5, 5, 10, -20, 100],
+    [-20, -50, -2, -2, -2, -2, -50, -20],
+    [10, -2, 1, 1, 1, 1, -2, 10],
+    [5, -2, 1, 1, 1, 1, -2, 5],
+    [5, -2, 1, 1, 1, 1, -2, 5],
+    [10, -2, 1, 1, 1, 1, -2, 10],
+    [-20, -50, -2, -2, -2, -2, -50, -20],
+    [100, -20, 10, 5, 5, 10, -20, 100],
+  ];
+
+  let aiScore = 0;
+  let oppScore = 0;
+  let aiMobility = 0;
+  let oppMobility = 0;
+
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] === aiPlayer) {
+        aiScore += weights[r][c];
+      } else if (board[r][c] === opponent) {
+        oppScore += weights[r][c];
+      }
+    }
+  }
+
+  // 行动力（合法落子位置数）
+  aiMobility = getValidMoves(board, aiPlayer).length;
+  oppMobility = getValidMoves(board, opponent).length;
+
+  // 棋子数量差异（终局时重要）
+  const { black, white } = countPieces(board);
+  const aiPieces = aiPlayer === 1 ? black : white;
+  const oppPieces = aiPlayer === 1 ? white : black;
+
+  // 总得分 = 位置权重 + 行动力差异 + 棋子数差异
+  return (aiScore - oppScore) * 10 + (aiMobility - oppMobility) * 5 + (aiPieces - oppPieces) * 2;
+};
+
+// MiniMax + Alpha-Beta 剪枝
+const minimax = (
+  board: OthelloCell[][],
+  depth: number,
+  isMaximizing: boolean,
+  alpha: number,
+  beta: number,
+  aiPlayer: OthelloCell,
+): number => {
+  const opponent = aiPlayer === 1 ? 2 : 1;
+
+  if (depth === 0) {
+    return evaluateBoard(board, aiPlayer);
+  }
+
+  const currentPlayer = isMaximizing ? aiPlayer : opponent;
+  const moves = getValidMoves(board, currentPlayer);
+
+  // 如果当前玩家无合法走法，跳过
+  if (moves.length === 0) {
+    const nextMoves = getValidMoves(board, isMaximizing ? opponent : aiPlayer);
+    if (nextMoves.length === 0) {
+      // 游戏结束
+      return evaluateBoard(board, aiPlayer);
+    }
+    return minimax(board, depth - 1, !isMaximizing, alpha, beta, aiPlayer);
+  }
+
+  if (isMaximizing) {
+    let maxEval = -Infinity;
+    for (const move of moves) {
+      const newBoard = makeMove(board, move.row, move.col, aiPlayer);
+      if (!newBoard) continue;
+      const score = minimax(newBoard, depth - 1, false, alpha, beta, aiPlayer);
+      maxEval = Math.max(maxEval, score);
+      alpha = Math.max(alpha, score);
+      if (beta <= alpha) break;
+    }
+    return maxEval;
+  } else {
+    let minEval = Infinity;
+    for (const move of moves) {
+      const newBoard = makeMove(board, move.row, move.col, opponent);
+      if (!newBoard) continue;
+      const score = minimax(newBoard, depth - 1, true, alpha, beta, aiPlayer);
+      minEval = Math.min(minEval, score);
+      beta = Math.min(beta, score);
+      if (beta <= alpha) break;
+    }
+    return minEval;
+  }
+};
+
+// AI: 使用 MiniMax + Alpha-Beta 选择最佳走法
 export const aiSelectMove = (
   board: OthelloCell[][],
   moves: Array<{ row: number; col: number; flips: Array<[number, number]> }>,
+  aiPlayer: OthelloCell = 2,
 ): { row: number; col: number; flips: Array<[number, number]> } | null => {
   if (moves.length === 0) return null;
+
+  const DEPTH = 4;
 
   let bestScore = -Infinity;
   let bestMoves: Array<{ row: number; col: number; flips: Array<[number, number]> }> = [];
 
-  // 角落权重极高，边缘次之
-  const cornerPositions = [
-    [0, 0], [0, BOARD_SIZE - 1],
-    [BOARD_SIZE - 1, 0], [BOARD_SIZE - 1, BOARD_SIZE - 1],
-  ];
-  const isCorner = ([r, c]: number[]) =>
-    cornerPositions.some(([cr, cc]) => cr === r && cc === c);
-  const isEdge = ([r, c]: number[]) =>
-    r === 0 || r === BOARD_SIZE - 1 || c === 0 || c === BOARD_SIZE - 1;
-
   for (const move of moves) {
-    let score = move.flips.length * 5;
+    const newBoard = makeMove(board, move.row, move.col, aiPlayer);
+    if (!newBoard) continue;
 
-    if (isCorner([move.row, move.col])) score += 100;
-    else if (isEdge([move.row, move.col])) score += 10;
-
-    // 移动后稳定性：检查周围是否都是己方
-    let stableCount = 0;
-    for (const [dr, dc] of DIRECTIONS) {
-      const r = move.row + dr;
-      const c = move.col + dc;
-      if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
-        // 简化：检查 8 个方向是否形成己方连接
-        let r2 = r + dr;
-        let c2 = c + dc;
-        while (r2 >= 0 && r2 < BOARD_SIZE && c2 >= 0 && c2 < BOARD_SIZE) {
-          if (board[r2][c2] === 2) { // AI 是 2
-            stableCount++;
-            break;
-          }
-          r2 += dr;
-          c2 += dc;
-        }
-      }
-    }
-    score += stableCount * 3;
+    const score = minimax(newBoard, DEPTH - 1, false, -Infinity, Infinity, aiPlayer);
 
     if (score > bestScore) {
       bestScore = score;

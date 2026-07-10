@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useGomoku } from '../hooks/useGomoku';
 import { BOARD_SIZE, CELL_SIZE } from '../utils/gomokuUtils';
 import { GomokuMode } from '../types/game';
@@ -8,6 +9,14 @@ interface GomokuGameProps {
 
 export const GomokuGame = ({ onBack }: GomokuGameProps) => {
   const { state, best, reset, placeStone, setMode } = useGomoku();
+
+  // 从sessionStorage读取模式
+  useEffect(() => {
+    const savedMode = sessionStorage.getItem('game_mode_gomoku') as GomokuMode | null;
+    if (savedMode && (savedMode === 'pve' || savedMode === 'pvp')) {
+      setMode(savedMode);
+    }
+  }, [setMode]);
 
   // 点击位置转格子坐标：点击 canvas 任意位置，找出最近的可下子格子
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {

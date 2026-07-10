@@ -3,6 +3,7 @@ import { HomePage } from './components/HomePage';
 import { SingleModePage } from './components/SingleModePage';
 import { VersusModePage } from './components/VersusModePage';
 import { BoardGamesPage } from './components/BoardGamesPage';
+import { ModeSelectDialog } from './components/ModeSelectDialog';
 import { SnakeGame } from './components/SnakeGame';
 import { TetrisGame } from './components/TetrisGame';
 import { PlaneGame } from './components/PlaneGame';
@@ -19,17 +20,57 @@ import { ChessGame } from './components/ChessGame';
 import { VersusSnakeGame } from './components/VersusSnakeGame';
 import { VersusPlaneGame } from './components/VersusPlaneGame';
 import { PongGame } from './components/PongGame';
-import { Page } from './types/game';
+import { Page, OthelloMode } from './types/game';
+
+interface DialogState {
+  show: boolean;
+  page: Page;
+  title: string;
+  emoji: string;
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [dialogState, setDialogState] = useState<DialogState>({
+    show: false,
+    page: 'home',
+    title: '',
+    emoji: '',
+  });
 
   const handleSelectMode = (page: Page) => {
     setCurrentPage(page);
   };
 
   const handleSelectGame = (page: Page) => {
-    setCurrentPage(page);
+    // 棋类游戏：弹出模式选择对话框
+    const boardGameInfo: Record<string, { title: string; emoji: string }> = {
+      gomoku: { title: '五子棋', emoji: '⚫' },
+      othello: { title: '黑白棋', emoji: '⚪' },
+      tictactoe: { title: '三连棋', emoji: '❌' },
+      connectfour: { title: '四子棋', emoji: '🔴' },
+      xiangqi: { title: '中国象棋', emoji: '🐘' },
+      chess: { title: '国际象棋', emoji: '♟️' },
+    };
+
+    const info = boardGameInfo[page];
+    if (info) {
+      setDialogState({
+        show: true,
+        page,
+        title: info.title,
+        emoji: info.emoji,
+      });
+    } else {
+      setCurrentPage(page);
+    }
+  };
+
+  const handleSelectBoardGameMode = (mode: OthelloMode) => {
+    // 将模式保存到 sessionStorage，让游戏组件读取
+    sessionStorage.setItem(`game_mode_${dialogState.page}`, mode);
+    setDialogState({ ...dialogState, show: false });
+    setCurrentPage(dialogState.page);
   };
 
   const handleBack = () => {
@@ -76,6 +117,15 @@ function App() {
       {currentPage === 'snake-versus' && <VersusSnakeGame onBack={handleBack} />}
       {currentPage === 'plane-versus' && <VersusPlaneGame onBack={handleBack} />}
       {currentPage === 'pong' && <PongGame onBack={handleBack} />}
+
+      {dialogState.show && (
+        <ModeSelectDialog
+          gameTitle={dialogState.title}
+          emoji={dialogState.emoji}
+          onSelectMode={handleSelectBoardGameMode}
+          onCancel={() => setDialogState({ ...dialogState, show: false })}
+        />
+      )}
     </>
   );
 }

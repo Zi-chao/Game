@@ -11,6 +11,14 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
   const { state, best, playerMove, aiMove, reset, setMode } = useOthello();
   const aiTimerRef = useRef<number | null>(null);
 
+  // 从sessionStorage读取模式
+  useEffect(() => {
+    const savedMode = sessionStorage.getItem('game_mode_othello') as OthelloMode | null;
+    if (savedMode && (savedMode === 'pve' || savedMode === 'pvp')) {
+      setMode(savedMode);
+    }
+  }, [setMode]);
+
   useEffect(() => {
     if (state.mode === 'pve' && state.currentPlayer === 2 && state.status === 'playing') {
       aiTimerRef.current = window.setTimeout(() => {

@@ -65,7 +65,7 @@ const games: GameCard[] = [
     gradient: 'from-red-500 to-orange-700',
     borderColor: 'border-red-400',
     shadowColor: 'shadow-red-500/50',
-    modes: '双人',
+    modes: '人机/双人',
   },
   {
     id: 'chess',
@@ -75,7 +75,7 @@ const games: GameCard[] = [
     gradient: 'from-blue-500 to-indigo-700',
     borderColor: 'border-blue-400',
     shadowColor: 'shadow-blue-500/50',
-    modes: '双人',
+    modes: '人机/双人',
   },
 ];
 

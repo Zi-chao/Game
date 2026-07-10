@@ -43,69 +43,163 @@ export const checkWin = (
   return false;
 };
 
-// 评估棋盘上某一方的得分
-const evaluateLine = (
-  board: CellValue[][],
-  row: number,
-  col: number,
-  dr: number,
-  dc: number,
-  player: CellValue,
-): number => {
-  let count = 0;
-  let empty = 0;
+// 全局评估函数：评估整个棋盘的得分（从AI视角）
+const evaluateWholeBoard = (board: CellValue[][], aiPlayer: CellValue): number => {
+  const opponent = aiPlayer === 1 ? 2 : 1;
+  let score = 0;
 
-  for (let i = 0; i < 5; i++) {
-    const r = row + dr * i;
-    const c = col + dc * i;
-    if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
-    if (board[r][c] === player) count++;
-    else if (board[r][c] === 0) empty++;
-    else break;
+  // 扫描所有可能形成五连的位置
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      for (const [dr, dc] of directions) {
+        // 检查从(r,c)开始的5格窗口
+        if (r + dr * 4 < 0 || r + dr * 4 >= BOARD_SIZE ||
+            c + dc * 4 < 0 || c + dc * 4 >= BOARD_SIZE) continue;
+
+        let aiCount = 0;
+        let oppCount = 0;
+        let empty = 0;
+
+        for (let i = 0; i < 5; i++) {
+          const rr = r + dr * i;
+          const cc = c + dc * i;
+          const cell = board[rr][cc];
+          if (cell === aiPlayer) aiCount++;
+          else if (cell === opponent) oppCount++;
+          else empty++;
+        }
+
+        // 评分这个5格窗口
+        if (aiCount > 0 && oppCount > 0) continue; // 双方都有，无法形成五连
+
+        if (aiCount === 5) return 100000;
+        if (oppCount === 5) return -100000;
+
+        if (aiCount === 4 && empty === 1) score += 10000;
+        else if (aiCount === 4 && empty >= 2) score += 1000;
+        else if (aiCount === 3 && empty === 2) score += 500;
+        else if (aiCount === 3 && empty === 1) score += 100;
+        else if (aiCount === 2 && empty === 3) score += 50;
+        else if (aiCount === 2 && empty === 2) score += 10;
+        else if (aiCount === 1 && empty === 4) score += 1;
+
+        if (oppCount === 4 && empty === 1) score -= 10000;
+        else if (oppCount === 4 && empty >= 2) score -= 1000;
+        else if (oppCount === 3 && empty === 2) score -= 500;
+        else if (oppCount === 3 && empty === 1) score -= 100;
+        else if (oppCount === 2 && empty === 3) score -= 50;
+        else if (oppCount === 2 && empty === 2) score -= 10;
+        else if (oppCount === 1 && empty === 4) score -= 1;
+      }
+    }
   }
 
-  // 加上后续延伸
-  for (let i = 1; i < 5; i++) {
-    const r = row - dr * i;
-    const c = col - dc * i;
-    if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
-    if (board[r][c] === player) count++;
-    else if (board[r][c] === 0) empty++;
-    else break;
-  }
-
-  // 评分规则
-  if (count >= 5) return 100000;
-  if (count === 4 && empty >= 2) return 10000;
-  if (count === 4 && empty === 1) return 1000;
-  if (count === 3 && empty >= 2) return 500;
-  if (count === 3 && empty === 1) return 100;
-  if (count === 2 && empty >= 2) return 50;
-  if (count === 2 && empty === 1) return 10;
-  if (count === 1 && empty >= 2) return 5;
-
-  return 0;
+  return score;
 };
 
-export const evaluatePosition = (
-  board: CellValue[][],
-  row: number,
-  col: number,
-  player: CellValue,
-): number => {
-  if (board[row][col] !== 0) return -1;
-  const tempBoard = board.map(r => [...r]);
-  tempBoard[row][col] = player;
+// 获取候选位置：距离已有棋子2格以内的空位
+const getCandidates = (board: CellValue[][]): Array<{ row: number; col: number }> => {
+  const candidates: Array<{ row: number; col: number }> = [];
+  const seen = new Set<string>();
 
-  const directions = [
-    [0, 1], [1, 0], [1, 1], [1, -1],
-  ];
-
-  let score = 0;
-  for (const [dr, dc] of directions) {
-    score += evaluateLine(tempBoard, row, col, dr, dc, player);
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== 0) {
+        // 在已有棋子周围2格内找空位
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === 0) {
+              const key = `${nr},${nc}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                candidates.push({ row: nr, col: nc });
+              }
+            }
+          }
+        }
+      }
+    }
   }
-  return score;
+  return candidates;
+};
+
+// 立即吃子和防守检测
+const immediateCheck = (board: CellValue[][], row: number, col: number, player: CellValue): boolean => {
+  board[row][col] = player;
+  const result = checkWin(board, row, col, player);
+  board[row][col] = 0;
+  return result;
+};
+
+// MiniMax + Alpha-Beta 剪枝
+const minimax = (
+  board: CellValue[][],
+  depth: number,
+  isMaximizing: boolean,
+  alpha: number,
+  beta: number,
+  aiPlayer: CellValue,
+): number => {
+  const opponent = aiPlayer === 1 ? 2 : 1;
+
+  // 检查胜负
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] !== 0 && checkWin(board, r, c, board[r][c])) {
+        return board[r][c] === aiPlayer ? 100000 + depth : -100000 - depth;
+      }
+    }
+  }
+
+  if (depth === 0) {
+    return evaluateWholeBoard(board, aiPlayer);
+  }
+
+  const candidates = getCandidates(board);
+  if (candidates.length === 0) {
+    return evaluateWholeBoard(board, aiPlayer);
+  }
+
+  // 走法排序：基于即时评分
+  const sortedMoves = candidates.map(move => {
+    let priority = 0;
+    // 立即赢棋
+    if (immediateCheck(board, move.row, move.col, isMaximizing ? aiPlayer : opponent)) {
+      priority += 100000;
+    }
+    // 阻断对手四连
+    if (immediateCheck(board, move.row, move.col, isMaximizing ? opponent : aiPlayer)) {
+      priority += 90000;
+    }
+    return { move, priority };
+  }).sort((a, b) => b.priority - a.priority).slice(0, 20).map(m => m.move);
+
+  if (isMaximizing) {
+    let maxEval = -Infinity;
+    for (const move of sortedMoves) {
+      const newBoard = board.map(r => [...r]);
+      newBoard[move.row][move.col] = aiPlayer;
+      const score = minimax(newBoard, depth - 1, false, alpha, beta, aiPlayer);
+      maxEval = Math.max(maxEval, score);
+      alpha = Math.max(alpha, score);
+      if (beta <= alpha) break;
+    }
+    return maxEval;
+  } else {
+    let minEval = Infinity;
+    for (const move of sortedMoves) {
+      const newBoard = board.map(r => [...r]);
+      newBoard[move.row][move.col] = opponent;
+      const score = minimax(newBoard, depth - 1, true, alpha, beta, aiPlayer);
+      minEval = Math.min(minEval, score);
+      beta = Math.min(beta, score);
+      if (beta <= alpha) break;
+    }
+    return minEval;
+  }
 };
 
 // AI 寻找最佳落子位置
@@ -113,50 +207,65 @@ export const findBestMove = (
   board: CellValue[][],
   aiPlayer: CellValue,
 ): { row: number; col: number } => {
-  let bestScore = -1;
-  let bestRow = 7;
-  let bestCol = 7;
+  const opponent = aiPlayer === 1 ? 2 : 1;
 
-  // 优先在已有棋子附近搜索
-  const candidates: Array<{ row: number; col: number; priority: number }> = [];
-
+  // 第一手默认走中心
+  let hasPiece = false;
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
-      if (board[r][c] === 0) {
-        // 计算此位置距离最近棋子的最小距离
-        let minDist = BOARD_SIZE * 2;
-        for (let i = 0; i < BOARD_SIZE; i++) {
-          for (let j = 0; j < BOARD_SIZE; j++) {
-            if (board[i][j] !== 0) {
-              const dist = Math.abs(i - r) + Math.abs(j - c);
-              if (dist < minDist) minDist = dist;
-            }
-          }
-        }
-        candidates.push({ row: r, col: c, priority: minDist });
-      }
+      if (board[r][c] !== 0) { hasPiece = true; break; }
+    }
+    if (hasPiece) break;
+  }
+  if (!hasPiece) return { row: 7, col: 7 };
+
+  // 检查立即赢棋
+  const candidates = getCandidates(board);
+  for (const move of candidates) {
+    if (immediateCheck(board, move.row, move.col, aiPlayer)) {
+      return { row: move.row, col: move.col };
     }
   }
 
-  // 优先搜索距离已有棋子3格内的位置
-  candidates.sort((a, b) => a.priority - b.priority);
-  const searchRange = candidates.slice(0, 80);
-
-  for (const { row, col } of searchRange) {
-    // 攻击分
-    const aiScore = evaluatePosition(board, row, col, aiPlayer);
-    // 防守分（对手是玩家）
-    const opponent = aiPlayer === 1 ? 2 : 1;
-    const defenseScore = evaluatePosition(board, row, col, opponent);
-
-    const totalScore = aiScore * 1.1 + defenseScore; // 略偏攻击
-
-    if (totalScore > bestScore) {
-      bestScore = totalScore;
-      bestRow = row;
-      bestCol = col;
+  // 检查对手立即赢棋的位置（必须防守）
+  for (const move of candidates) {
+    if (immediateCheck(board, move.row, move.col, opponent)) {
+      return { row: move.row, col: move.col };
     }
   }
 
-  return { row: bestRow, col: bestCol };
+  // 使用 MiniMax + Alpha-Beta 搜索
+  const sortedMoves = candidates.map(move => {
+    let priority = 0;
+    if (immediateCheck(board, move.row, move.col, aiPlayer)) priority += 100000;
+    if (immediateCheck(board, move.row, move.col, opponent)) priority += 90000;
+    return { move, priority };
+  }).sort((a, b) => b.priority - a.priority).slice(0, 15);
+
+  let bestScore = -Infinity;
+  let bestMove = { row: 7, col: 7 };
+  const DEPTH = 4;
+
+  for (const { move } of sortedMoves) {
+    const newBoard = board.map(r => [...r]);
+    newBoard[move.row][move.col] = aiPlayer;
+    const score = minimax(newBoard, DEPTH - 1, false, -Infinity, Infinity, aiPlayer);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = move;
+    }
+  }
+
+  return bestMove;
+};
+
+// 保留旧 API 用于其他用途
+export const evaluatePosition = (
+  board: CellValue[][],
+  _row: number,
+  _col: number,
+  player: CellValue,
+): number => {
+  return evaluateWholeBoard(board, player);
 };
