@@ -31,7 +31,7 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
         }
       };
     }
-  }, [state.currentPlayer, state.status, state.mode, aiMove]);
+  }, [state.currentPlayer, state.validMoves, state.status, state.mode, aiMove]);
 
   const isValidMove = (row: number, col: number) => {
     return state.validMoves.some(m => m.row === row && m.col === col);
