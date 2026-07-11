@@ -3,6 +3,8 @@ import { useMinesweeper } from '../hooks/useMinesweeper';
 import { Difficulty } from '../types/game';
 import { DIFFICULTY_CONFIGS, CELL_SIZE } from '../utils/minesweeperUtils';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface MinesweeperGameProps {
   onBack: () => void;
@@ -24,13 +26,10 @@ export const MinesweeperGame = ({ onBack }: MinesweeperGameProps) => {
   };
 
   const [cellSize, setCellSize] = useState(CELL_SIZE);
-  const [isPortrait, setIsPortrait] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
-      const portrait = window.innerHeight > window.innerWidth;
-      setIsPortrait(mobile && portrait);
       if (mobile) {
         const maxWidth = window.innerWidth - 32;
         const cols = config.cols;
@@ -49,21 +48,9 @@ export const MinesweeperGame = ({ onBack }: MinesweeperGameProps) => {
     };
   }, [config.cols]);
 
-  if (isPortrait) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="text-6xl mb-6">📱</div>
-        <div className="text-2xl font-bold text-white mb-4">请将手机旋转至横屏</div>
-        <div className="text-slate-400 text-center px-8">
-          <p>扫雷游戏需要横屏才能完整显示</p>
-          <p>旋转后即可开始游戏</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center p-2 md:p-4 relative">
+      <OrientationPrompt mode="landscape" />
       <button
         onClick={onBack}
         className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -72,8 +59,8 @@ export const MinesweeperGame = ({ onBack }: MinesweeperGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['minesweeper_best_time', 'minesweeper_easy', 'minesweeper_medium', 'minesweeper_hard', 'minesweeper_expert']} onCleared={() => window.location.reload()} />
-
-      <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-300 to-gray-500 mb-2 md:mb-4 mt-4 md:mt-8">
+      <GameControls />
+      <OrientationPrompt mode="landscape" /><h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-300 to-gray-500 mb-2 md:mb-4 mt-4 md:mt-8">
         💣 扫雷
       </h1>
 

@@ -5,8 +5,9 @@ import { ScorePanel } from './ScorePanel';
 import { ControlButtons } from './ControlButtons';
 import { GameOverlay } from './GameOverlay';
 import { MobileControls } from './MobileControls';
-import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface SnakeGameProps {
   onBack: () => void;
@@ -73,8 +74,7 @@ export const SnakeGame = ({ onBack }: SnakeGameProps) => {
   }, [handleKeyDown]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
-      <OrientationPrompt />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -83,6 +83,8 @@ export const SnakeGame = ({ onBack }: SnakeGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['snake_high_score']} onCleared={() => window.location.reload()} />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-600 mb-6 mt-8">
         🐍 贪吃蛇
@@ -104,7 +106,7 @@ export const SnakeGame = ({ onBack }: SnakeGameProps) => {
         onReset={resetGame}
       />
 
-      <MobileControls onChangeDirection={changeDirection} isPlaying={gameState.isPlaying} />
+      <MobileControls onChangeDirection={changeDirection} />
 
       <div className="mt-6 text-slate-400 text-sm text-center">
         <p className="hidden md:block">方向键控制移动 | 空格键开始/暂停 | R键重新开始</p>

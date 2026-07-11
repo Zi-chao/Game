@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Page } from '../types/game';
+import { readOrientationDisabled } from './OrientationPrompt';
 
 interface HomePageProps {
   onSelectMode: (page: Page) => void;
@@ -13,6 +15,8 @@ interface ModeCard {
   borderColor: string;
   shadowColor: string;
 }
+
+const ORIENTATION_DISABLED_KEY = 'orientation_recommendation_disabled';
 
 const modes: ModeCard[] = [
   {
@@ -45,6 +49,15 @@ const modes: ModeCard[] = [
 ];
 
 export const HomePage = ({ onSelectMode }: HomePageProps) => {
+  const [orientationDisabled, setOrientationDisabled] = useState(() => readOrientationDisabled());
+  const [showHelp, setShowHelp] = useState(false);
+
+  const handleToggle = () => {
+    const next = !orientationDisabled;
+    setOrientationDisabled(next);
+    localStorage.setItem(ORIENTATION_DISABLED_KEY, String(next));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -63,6 +76,41 @@ export const HomePage = ({ onSelectMode }: HomePageProps) => {
             <span>⭐</span>
             <span>⭐</span>
             <span>⭐</span>
+          </div>
+        </div>
+
+        {/* 横竖屏推荐开关 - 放在标题下方、模式卡片上方，更显眼 */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="bg-slate-800/70 backdrop-blur-sm border border-slate-600 rounded-2xl p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <span className="text-2xl">📱↔️</span>
+              <div>
+                <div className="text-white font-semibold text-base">横竖屏推荐</div>
+                <div className="text-slate-400 text-xs">进入游戏时提醒旋转设备方向</div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleToggle}
+              className={`relative w-14 h-7 rounded-full transition-colors flex-shrink-0 ${
+                orientationDisabled ? 'bg-slate-600' : 'bg-cyan-500'
+              }`}
+              title={orientationDisabled ? '点击开启' : '点击关闭'}
+            >
+              <span
+                className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                  orientationDisabled ? 'left-0.5' : 'left-7'
+                }`}
+              />
+            </button>
+
+            <button
+              onClick={() => setShowHelp(v => !v)}
+              className="w-7 h-7 rounded-full border-2 border-slate-400 text-slate-200 text-sm flex items-center justify-center hover:bg-slate-700 hover:border-slate-300 hover:text-white transition-all flex-shrink-0"
+              title="查看说明"
+            >
+              ?
+            </button>
           </div>
         </div>
 
@@ -95,6 +143,41 @@ export const HomePage = ({ onSelectMode }: HomePageProps) => {
         <div className="mt-12 text-center text-slate-500 text-sm">
           <p>使用方向键 / WASD / 空格键操作游戏</p>
         </div>
+
+        {showHelp && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowHelp(false)}
+          >
+            <div
+              className="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-sm shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full border-2 border-slate-400 text-slate-200 text-sm flex items-center justify-center">?</span>
+                  横竖屏推荐说明
+                </h3>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="text-slate-400 hover:text-white text-xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="text-sm text-slate-300 space-y-2">
+                <p>• <span className="text-cyan-400">开启</span>：进入游戏时若方向不符，会弹出全屏提示（需手动关闭）</p>
+                <p>• <span className="text-slate-400">关闭</span>：进入游戏时仅在右上角显示小提示，不阻挡游戏</p>
+              </div>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+              >
+                知道了
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useMemoryGame, MemoryDifficulty } from '../hooks/useMemoryGame';
 import { GRID_SIZES } from '../utils/memoryUtils';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface MemoryGameProps {
   onBack: () => void;
@@ -19,13 +21,10 @@ export const MemoryGame = ({ onBack }: MemoryGameProps) => {
   const config = GRID_SIZES[difficulty];
 
   const [cardSize, setCardSize] = useState(80);
-  const [isPortrait, setIsPortrait] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
-      const portrait = window.innerHeight > window.innerWidth;
-      setIsPortrait(mobile && portrait);
       if (mobile) {
         const maxWidth = window.innerWidth - 32;
         const sizeByWidth = Math.floor(maxWidth / config.cols);
@@ -43,21 +42,9 @@ export const MemoryGame = ({ onBack }: MemoryGameProps) => {
     };
   }, [config.cols]);
 
-  if (isPortrait) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="text-6xl mb-6">📱</div>
-        <div className="text-2xl font-bold text-white mb-4">请将手机旋转至横屏</div>
-        <div className="text-slate-400 text-center px-8">
-          <p>记忆翻牌游戏需要横屏才能完整显示</p>
-          <p>旋转后即可开始游戏</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 flex flex-col items-center p-2 md:p-4 relative">
+      <OrientationPrompt mode="landscape" />
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -66,6 +53,7 @@ export const MemoryGame = ({ onBack }: MemoryGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['memory_best']} onCleared={() => window.location.reload()} />
+      <GameControls />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-pink-600 mb-4 mt-8">
         🧠 记忆翻牌

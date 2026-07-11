@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useVersusSnake } from '../hooks/useVersusSnake';
 import { VERSUS_GRID_SIZE, VERSUS_CELL_SIZE } from '../utils/versusUtils';
-import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface VersusSnakeGameProps {
   onBack: () => void;
@@ -92,8 +93,7 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
-      <OrientationPrompt />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -102,6 +102,8 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['versus_snake_best']} onCleared={() => window.location.reload()} />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       {/* 玩家2控制 - 倒置显示在标题上方，按键镜像 */}
       <div className="md:hidden w-full mt-2 px-3 select-none">
@@ -136,7 +138,7 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
         </div>
       </div>
 
-      <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-4 md:mt-8">
+      <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-4 md:mt-8">
         🐍 贪吃蛇对战
       </h1>
 

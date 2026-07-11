@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useVersusPlane } from '../hooks/useVersusPlane';
-import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface VersusPlaneGameProps {
   onBack: () => void;
@@ -15,71 +16,8 @@ const BULLET_WIDTH = 6;
 const BULLET_HEIGHT = 14;
 
 export const VersusPlaneGame = ({ onBack }: VersusPlaneGameProps) => {
-  const { state, requiredScore, start, reset, togglePause, setPlayer1X, setPlayer2X, fire1, fire2 } = useVersusPlane();
+  const { state, requiredScore, start, reset, togglePause } = useVersusPlane();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fire1HeldRef = useRef(false);
-  const fire2HeldRef = useRef(false);
-  const fire1IntervalRef = useRef<number | null>(null);
-  const fire2IntervalRef = useRef<number | null>(null);
-
-  const startFire1 = () => {
-    if (fire1HeldRef.current) return;
-    fire1HeldRef.current = true;
-    fire1();
-    fire1IntervalRef.current = window.setInterval(() => {
-      if (fire1HeldRef.current) fire1();
-    }, 350);
-  };
-  const stopFire1 = () => {
-    fire1HeldRef.current = false;
-    if (fire1IntervalRef.current) {
-      clearInterval(fire1IntervalRef.current);
-      fire1IntervalRef.current = null;
-    }
-  };
-
-  const startFire2 = () => {
-    if (fire2HeldRef.current) return;
-    fire2HeldRef.current = true;
-    fire2();
-    fire2IntervalRef.current = window.setInterval(() => {
-      if (fire2HeldRef.current) fire2();
-    }, 350);
-  };
-  const stopFire2 = () => {
-    fire2HeldRef.current = false;
-    if (fire2IntervalRef.current) {
-      clearInterval(fire2IntervalRef.current);
-      fire2IntervalRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      stopFire1();
-      stopFire2();
-    };
-  }, []);
-
-  const handleTouch1 = (e: React.TouchEvent) => {
-    if (!state.isPlaying || state.isPaused || state.winner !== null) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const targetX = (x / rect.width) * GAME_WIDTH - PLAYER_WIDTH / 2;
-    setPlayer1X(targetX);
-  };
-
-  const handleTouch2 = (e: React.TouchEvent) => {
-    if (!state.isPlaying || state.isPaused || state.winner !== null) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const targetX = (x / rect.width) * GAME_WIDTH - PLAYER_WIDTH / 2;
-    setPlayer2X(targetX);
-  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -166,8 +104,7 @@ export const VersusPlaneGame = ({ onBack }: VersusPlaneGameProps) => {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
-      <OrientationPrompt />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -176,33 +113,8 @@ export const VersusPlaneGame = ({ onBack }: VersusPlaneGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['versus_plane_best']} onCleared={() => window.location.reload()} />
-
-      {/* 玩家2控制 - 倒置显示在标题上方，触摸区域 */}
-      <div className="md:hidden w-full mt-2 px-3 select-none">
-        <div className="text-xs text-blue-300 text-center mb-1">🔵 玩家2 (倒着玩)</div>
-        <div className="flex flex-col items-center gap-1 rotate-180">
-          <button
-            onPointerDown={(e) => { e.preventDefault(); startFire2(); }}
-            onPointerUp={stopFire2}
-            onPointerLeave={stopFire2}
-            onPointerCancel={stopFire2}
-            onClick={() => fire2()}
-            className="w-14 h-12 bg-blue-700 active:bg-blue-500 text-white text-sm rounded-lg font-bold flex items-center justify-center cursor-pointer select-none"
-            style={{ touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
-          >
-            <span className="rotate-180">🔥 射击</span>
-          </button>
-          {/* 触摸移动区域 */}
-          <div
-            onTouchMove={handleTouch2}
-            onTouchStart={handleTouch2}
-            className="w-full h-16 bg-blue-900/30 border-2 border-blue-500/50 rounded-lg flex items-center justify-center"
-            style={{ touchAction: 'none' }}
-          >
-            <span className="text-blue-400 text-xs rotate-180">← 触摸滑动移动 →</span>
-          </div>
-        </div>
-      </div>
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-4 md:mt-8">
         ✈️ 飞机大战对战
@@ -293,36 +205,9 @@ export const VersusPlaneGame = ({ onBack }: VersusPlaneGameProps) => {
         )}
       </div>
 
-      {/* 玩家1控制 - 在游戏下方 */}
-      <div className="md:hidden w-full mt-2 px-3 select-none">
-        <div className="text-xs text-emerald-300 text-center mb-1">🟢 玩家1</div>
-        <div className="flex flex-col items-center gap-1">
-          <button
-            onPointerDown={(e) => { e.preventDefault(); startFire1(); }}
-            onPointerUp={stopFire1}
-            onPointerLeave={stopFire1}
-            onPointerCancel={stopFire1}
-            onClick={() => fire1()}
-            className="w-14 h-12 bg-emerald-700 active:bg-emerald-500 text-white text-sm rounded-lg font-bold flex items-center justify-center cursor-pointer select-none"
-            style={{ touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
-          >
-            🔥 射击
-          </button>
-          {/* 触摸移动区域 */}
-          <div
-            onTouchMove={handleTouch1}
-            onTouchStart={handleTouch1}
-            className="w-full h-16 bg-emerald-900/30 border-2 border-emerald-500/50 rounded-lg flex items-center justify-center"
-            style={{ touchAction: 'none' }}
-          >
-            <span className="text-emerald-400 text-xs">← 触摸滑动移动 →</span>
-          </div>
-        </div>
-      </div>
-
       <div className="mt-2 md:mt-4 text-slate-400 text-xs text-center">
-        <p className="hidden md:block">🟢 A/D 移动 + 空格射击 | 🔵 ← → 移动 + 回车射击 | R 重置</p>
-        <p className="md:hidden">玩家1触摸下方区域移动 / 玩家2触摸上方区域移动(倒置)</p>
+        <p>🟢 A/D 移动 + 空格射击 | 🔵 ← → 移动 + 回车射击 | R 重置</p>
+        <p className="text-amber-400">本游戏仅支持键盘控制，请使用外接键盘</p>
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useHop } from '../hooks/useHop';
 import { HOP_GRID_SIZE, getLevelRecord, getAllLevelRecords, HOP_LEVELS } from '../utils/hopUtils';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface HopGameProps {
   onBack: () => void;
@@ -18,7 +20,6 @@ const formatTime = (timestamp: number): string => {
 export const HopGame = ({ onBack }: HopGameProps) => {
   const { state, totalLevels, reset, restartLevel, hopTo, nextLevel, clearCurrentLevelRecord, clearAllRecords } = useHop();
   const [cellSize, setCellSize] = useState(50);
-  const [isPortrait, setIsPortrait] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | 'current' | 'all'>(null);
   const [, setRecordsVersion] = useState(0); // 触发重新读取
 
@@ -45,8 +46,6 @@ export const HopGame = ({ onBack }: HopGameProps) => {
   useEffect(() => {
     const checkSize = () => {
       const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
-      const portrait = window.innerHeight > window.innerWidth;
-      setIsPortrait(isMobile && portrait);
       if (isMobile) {
         const maxWidth = window.innerWidth - 32;
         const size = Math.floor(maxWidth / HOP_GRID_SIZE);
@@ -64,21 +63,9 @@ export const HopGame = ({ onBack }: HopGameProps) => {
     };
   }, []);
 
-  if (isPortrait) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center">
-        <div className="text-6xl mb-6">📱</div>
-        <div className="text-2xl font-bold text-white mb-4">请将手机旋转至横屏</div>
-        <div className="text-slate-400 text-center px-8">
-          <p>跳跳乐游戏需要横屏才能完整显示</p>
-          <p>旋转后即可开始游戏</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
+      <OrientationPrompt mode="landscape" />
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -87,6 +74,7 @@ export const HopGame = ({ onBack }: HopGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['hop_best', 'hop_level_records']} onCleared={() => window.location.reload()} />
+      <GameControls />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-pink-600 mb-4 mt-8">
         🦘 跳跳乐

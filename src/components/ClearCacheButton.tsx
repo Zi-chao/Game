@@ -20,7 +20,7 @@ export const ClearCacheButton = ({
 
   const handleClear = () => {
     // 始终清除通用缓存项
-    const allKeysToRemove = [...storageKeys, 'orientation_prompt_dismissed'];
+    const allKeysToRemove = [...storageKeys, 'orientation_recommendation_disabled'];
     allKeysToRemove.forEach(key => {
       try {
         localStorage.removeItem(key);

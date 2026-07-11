@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useTicTacToe } from '../hooks/useTicTacToe';
 import { OthelloMode } from '../types/game';
+import { OrientationPrompt } from './OrientationPrompt';
+import { GameControls } from './GameControls';
 import { AiSideSelector } from './AiSideSelector';
 import { ClearCacheButton } from './ClearCacheButton';
 
@@ -68,7 +70,7 @@ export const TicTacToeGame = ({ onBack }: TicTacToeGameProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -77,6 +79,8 @@ export const TicTacToeGame = ({ onBack }: TicTacToeGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['tictactoe_best']} onCleared={() => window.location.reload()} />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-500 mb-4 mt-8">
         ❌⭕ 三连棋

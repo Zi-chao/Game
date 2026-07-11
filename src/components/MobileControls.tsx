@@ -2,7 +2,6 @@ import { Direction } from '../types/game';
 
 interface MobileControlsProps {
   onChangeDirection: (direction: Direction) => void;
-  isPlaying: boolean;
   color?: 'emerald' | 'blue' | 'amber' | 'rose' | 'purple' | 'cyan';
   label?: string;
 }
@@ -16,8 +15,7 @@ const colorMap = {
   cyan: { bg: 'bg-cyan-700', hover: 'hover:bg-cyan-600', text: 'text-cyan-300' },
 };
 
-export const MobileControls = ({ onChangeDirection, isPlaying, color = 'emerald', label }: MobileControlsProps) => {
-  if (!isPlaying) return null;
+export const MobileControls = ({ onChangeDirection, color = 'emerald', label }: MobileControlsProps) => {
   const c = colorMap[color];
 
   return (
@@ -63,14 +61,12 @@ interface MobileShooterControlsProps {
   onMoveLeft: () => void;
   onMoveRight: () => void;
   onAction?: () => void;
-  isPlaying: boolean;
   color?: 'emerald' | 'blue' | 'amber' | 'rose' | 'purple' | 'cyan';
   label?: string;
   actionLabel?: string;
 }
 
-export const MobileShooterControls = ({ onMoveLeft, onMoveRight, onAction, isPlaying, color = 'amber', label, actionLabel = '射击' }: MobileShooterControlsProps) => {
-  if (!isPlaying) return null;
+export const MobileShooterControls = ({ onMoveLeft, onMoveRight, onAction, color = 'amber', label, actionLabel = '射击' }: MobileShooterControlsProps) => {
   const c = colorMap[color];
 
   return (

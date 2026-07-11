@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useTetrisGame } from '../hooks/useTetrisGame';
 import { BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, COLORS } from '../utils/tetrisUtils';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
 
 interface TetrisGameProps {
@@ -195,7 +197,7 @@ export const TetrisGame = ({ onBack }: TetrisGameProps) => {
   }, [handleKey]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-4 left-4 px-4 py-2 bg-slate-700/80 hover:bg-slate-600 text-white rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -204,6 +206,8 @@ export const TetrisGame = ({ onBack }: TetrisGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['tetris_high_score']} onCleared={() => window.location.reload()} />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 mt-8">
         🧩 俄罗斯方块
@@ -328,7 +332,7 @@ export const TetrisGame = ({ onBack }: TetrisGameProps) => {
           </div>
           <button
             onTouchStart={(e) => { e.preventDefault(); hardDrop(); }}
-            className="w-14 h-28 bg-purple-800 active:bg-purple-600 text-white text-sm rounded-lg font-bold touch-none flex flex-col items-center justify-center"
+            className="w-14 h-28 bg-purple-800 active:bg-purple-600 text-white text-sm rounded-lg font-bold touch-none flex flex-col items-center justify-center pt-20"
           >
             ⬇<br/>瞬间
           </button>

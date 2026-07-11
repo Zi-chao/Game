@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import { OthelloMode, AiSide } from '../types/game';
 import { AiSideSelector } from './AiSideSelector';
+import { OrientationPrompt } from './OrientationPrompt';
+import { GameControls } from './GameControls';
 import { ClearCacheButton } from './ClearCacheButton';
 
 interface XiangqiGameProps {
@@ -827,7 +829,7 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
                           ((BOARD_ROWS - 1) * LOGIC_POINT_SPACING + LOGIC_PADDING * 2);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -836,6 +838,8 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={[]} onCleared={() => window.location.reload()} label="🗑️ 清除缓存" />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500 mb-2 md:mb-3 mt-6 md:mt-8">
         🐘 中国象棋

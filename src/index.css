@@ -6,6 +6,11 @@
   font-family: 'Press Start 2P', cursive, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* 渐变文字默认使用实色，确保文字始终可见 */
+.text-transparent {
+  color: white;
+}
+
 body {
   margin: 0;
   padding: 0;

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { usePong } from '../hooks/usePong';
-import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
 
 interface PongGameProps {
   onBack: () => void;
@@ -76,8 +77,7 @@ export const PongGame = ({ onBack }: PongGameProps) => {
   }, [state, gameWidth, gameHeight]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
-      <OrientationPrompt />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -86,6 +86,8 @@ export const PongGame = ({ onBack }: PongGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['pong_best']} onCleared={() => window.location.reload()} />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-6 md:mt-8">
         🏓 重力小球
@@ -107,24 +109,24 @@ export const PongGame = ({ onBack }: PongGameProps) => {
         </div>
       </div>
 
-      {/* 玩家2控制 - 在游戏上方（移动端） */}
+      {/* 玩家1控制 - 在游戏下方（移动端） */}
       <div className="md:hidden w-full mt-3 px-4 select-none">
-        <div className="flex flex-col items-center mb-3">
-          <div className="text-xs text-blue-300 mb-1">🔵 P2</div>
+        <div className="flex flex-col items-center">
+          <div className="text-xs text-emerald-300 mb-1">🟢 P1</div>
           <div className="flex gap-2">
             <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(2, 'left', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(2, 'left', false); }}
-              onTouchCancel={() => setMobileMove(2, 'left', false)}
-              className="w-14 h-14 bg-blue-700 active:bg-blue-500 text-white text-xl rounded-lg font-bold touch-none"
+              onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'left', true); }}
+              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'left', false); }}
+              onTouchCancel={() => setMobileMove(1, 'left', false)}
+              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
             >
               ←
             </button>
             <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(2, 'right', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(2, 'right', false); }}
-              onTouchCancel={() => setMobileMove(2, 'right', false)}
-              className="w-14 h-14 bg-blue-700 active:bg-blue-500 text-white text-xl rounded-lg font-bold touch-none"
+              onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'right', true); }}
+              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'right', false); }}
+              onTouchCancel={() => setMobileMove(1, 'right', false)}
+              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
             >
               →
             </button>
@@ -142,7 +144,7 @@ export const PongGame = ({ onBack }: PongGameProps) => {
         />
 
         {(state.winner !== null || !state.isPlaying) && (
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center pt-[85px] p-4">
             {state.winner === 1 && (
               <>
                 <div className="text-4xl md:text-5xl mb-2 animate-bounce">🏆</div>

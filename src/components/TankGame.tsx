@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useTankGame } from '../hooks/useTankGame';
-import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
+import { GameControls } from './GameControls';
+import { OrientationPrompt } from './OrientationPrompt';
+import { Joystick } from './Joystick';
+import { Direction } from '../types/game';
 import {
   TILE_SIZE,
   TANK_SIZE,
@@ -128,8 +131,7 @@ export const TankGame = ({ onBack }: TankGameProps) => {
   }, [gameState, map]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 flex flex-col items-center justify-center p-2 md:p-4 relative">
-      <OrientationPrompt />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
       <button
         onClick={onBack}
         className="absolute top-2 left-2 md:top-4 md:left-4 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700/80 hover:bg-slate-600 text-white text-sm md:text-base rounded-lg backdrop-blur-sm transition-all hover:scale-105 z-20"
@@ -138,6 +140,8 @@ export const TankGame = ({ onBack }: TankGameProps) => {
       </button>
 
       <ClearCacheButton storageKeys={['tank_high_score']} onCleared={() => window.location.reload()} />
+      <GameControls />
+      <OrientationPrompt mode="portrait" />
 
       <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-600 mb-4 mt-8">
         🪖 坦克大战
@@ -209,58 +213,33 @@ export const TankGame = ({ onBack }: TankGameProps) => {
       </div>
 
       {/* 移动端控制 */}
-      {gameState.status === 'playing' && (
-        <div className="md:hidden w-full mt-3 px-3 select-none">
-          <div className="flex items-center justify-between gap-2">
-            {/* 移动方向 */}
-            <div className="grid grid-cols-3 gap-1.5">
-              <div></div>
-              <button
-                onTouchStart={(e) => { e.preventDefault(); setMobileMove('up', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('up', false); }}
-                onTouchCancel={() => setMobileMove('up', false)}
-                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
-              >
-                ↑
-              </button>
-              <div></div>
-              <button
-                onTouchStart={(e) => { e.preventDefault(); setMobileMove('left', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('left', false); }}
-                onTouchCancel={() => setMobileMove('left', false)}
-                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
-              >
-                ←
-              </button>
-              <button
-                onTouchStart={(e) => { e.preventDefault(); setMobileMove('down', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('down', false); }}
-                onTouchCancel={() => setMobileMove('down', false)}
-                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
-              >
-                ↓
-              </button>
-              <button
-                onTouchStart={(e) => { e.preventDefault(); setMobileMove('right', true); }}
-                onTouchEnd={(e) => { e.preventDefault(); setMobileMove('right', false); }}
-                onTouchCancel={() => setMobileMove('right', false)}
-                className="w-12 h-12 bg-amber-700 active:bg-amber-500 text-white text-lg rounded-lg font-bold touch-none"
-              >
-                →
-              </button>
-            </div>
-            {/* 射击按钮 */}
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove('shoot', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove('shoot', false); }}
-              onTouchCancel={() => setMobileMove('shoot', false)}
-              className="w-20 h-20 bg-red-600 active:bg-red-500 text-white text-lg rounded-full font-bold touch-none"
-            >
-              🔥 射击
-            </button>
-          </div>
+      <div className="md:hidden w-full mt-3 px-3 select-none">
+        <div className="flex items-center justify-between gap-3">
+          <Joystick
+            onChange={(dir: Direction | null) => {
+              setMobileMove('up', false);
+              setMobileMove('down', false);
+              setMobileMove('left', false);
+              setMobileMove('right', false);
+              if (dir === 'UP') setMobileMove('up', true);
+              else if (dir === 'DOWN') setMobileMove('down', true);
+              else if (dir === 'LEFT') setMobileMove('left', true);
+              else if (dir === 'RIGHT') setMobileMove('right', true);
+            }}
+            color="#f59e0b"
+            size={120}
+            label="🟡 摇杆"
+          />
+          <button
+            onTouchStart={(e) => { e.preventDefault(); setMobileMove('shoot', true); }}
+            onTouchEnd={(e) => { e.preventDefault(); setMobileMove('shoot', false); }}
+            onTouchCancel={() => setMobileMove('shoot', false)}
+            className="w-20 h-20 bg-red-600 active:bg-red-500 text-white text-sm rounded-full font-bold touch-none"
+          >
+            🔥 射击
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };
