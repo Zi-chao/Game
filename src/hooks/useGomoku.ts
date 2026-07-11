@@ -41,7 +41,7 @@ export const useGomoku = () => {
   }, []);
 
   const setMode = useCallback((mode: GomokuMode) => {
-    setState(prev => ({
+    setState(() => ({
       board: createEmptyBoard(),
       currentPlayer: 1,
       winner: null,

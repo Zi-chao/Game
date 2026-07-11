@@ -20,7 +20,7 @@ export const HopGame = ({ onBack }: HopGameProps) => {
   const [cellSize, setCellSize] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | 'current' | 'all'>(null);
-  const [recordsVersion, setRecordsVersion] = useState(0); // 触发重新读取
+  const [, setRecordsVersion] = useState(0); // 触发重新读取
 
   // 当前关卡的详细记录
   const currentRecord = getLevelRecord(state.levelIndex);

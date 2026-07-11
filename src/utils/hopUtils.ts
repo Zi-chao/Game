@@ -54,18 +54,6 @@ export const clearAllHopRecords = () => {
   localStorage.removeItem(HIGH_SCORE_KEY);
 };
 
-const getBest = (): number => {
-  const saved = localStorage.getItem(HIGH_SCORE_KEY);
-  return saved ? parseInt(saved, 10) : 0;
-};
-
-const saveBest = (clearedLevels: number) => {
-  const current = getBest();
-  if (clearedLevels > current) {
-    localStorage.setItem(HIGH_SCORE_KEY, clearedLevels.toString());
-  }
-};
-
 // 检查两点之间是否在一条线上（水平/垂直/对角）
 const isAligned = (r1: number, c1: number, r2: number, c2: number): boolean => {
   const dr = Math.abs(r2 - r1);

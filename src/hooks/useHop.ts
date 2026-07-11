@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { HopState, HopDot } from '../types/game';
-import { HOP_LEVELS, canHopTo, checkHopWin, saveLevelRecord, clearLevelRecord, clearAllHopRecords, getLevelRecord } from '../utils/hopUtils';
+import { HOP_LEVELS, canHopTo, checkHopWin, saveLevelRecord, clearLevelRecord, clearAllHopRecords } from '../utils/hopUtils';
 
 const HIGH_SCORE_KEY = 'hop_best';
 
