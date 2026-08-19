@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Direction } from '../types/game';
 
 interface JoystickProps {
@@ -13,6 +13,9 @@ export const Joystick = ({ onChange, color = '#22c55e', size = 120, label }: Joy
   const [active, setActive] = useState(false);
   const baseRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number | null>(null);
+  // 用 ref 保存最新的 onChange，避免 effect 频繁重建
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   const updatePosition = useCallback((clientX: number, clientY: number) => {
     if (!baseRef.current) return;
@@ -32,30 +35,60 @@ export const Joystick = ({ onChange, color = '#22c55e', size = 120, label }: Joy
 
     setPosition({ x: dx, y: dy });
 
-    const threshold = maxRadius * 0.25;
+    // 去掉死区：只要不在中心就触发方向
+    const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
     let direction: Direction | null = null;
-    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+    if (distanceFromCenter > 2) {
+      // 极小死区 (2px)，只过滤手指静止时的抖动
       if (Math.abs(dx) > Math.abs(dy)) {
         direction = dx > 0 ? 'RIGHT' : 'LEFT';
       } else {
+        // 屏幕坐标系: dy < 0 = 手指在 Joystick 顶部
+        // 推顶部 = 'UP' = 蛇向屏幕上方走 (y-1)
         direction = dy > 0 ? 'DOWN' : 'UP';
       }
     }
-    onChange(direction);
-  }, [onChange]);
+    // 调试日志（按 F12 控制台查看）
+    console.log(`[Joystick] dy=${dy.toFixed(0)} dx=${dx.toFixed(0)} -> ${direction}`);
+    onChangeRef.current(direction);
+  }, []);
 
-  const handleStart = (clientX: number, clientY: number, id: number) => {
+  const handleStart = useCallback((clientX: number, clientY: number, id: number) => {
     pointerIdRef.current = id;
     setActive(true);
     updatePosition(clientX, clientY);
-  };
+  }, [updatePosition]);
 
-  const handleEnd = () => {
+  const handleEnd = useCallback(() => {
     pointerIdRef.current = null;
     setActive(false);
     setPosition({ x: 0, y: 0 });
-    onChange(null);
-  };
+    onChangeRef.current(null);
+  }, []);
+
+  // 在 window 上全局监听 pointermove/pointerup，确保手指滑出 Joystick 边界后仍能控制
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (pointerIdRef.current === null) return;
+      if (e.pointerId !== pointerIdRef.current) return;
+      e.preventDefault();
+      updatePosition(e.clientX, e.clientY);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (pointerIdRef.current === null) return;
+      if (e.pointerId !== pointerIdRef.current) return;
+      e.preventDefault();
+      handleEnd();
+    };
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp, { passive: false });
+    window.addEventListener('pointercancel', onUp, { passive: false });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [updatePosition, handleEnd]);
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -63,40 +96,13 @@ export const Joystick = ({ onChange, color = '#22c55e', size = 120, label }: Joy
       <div
         ref={baseRef}
         className="relative rounded-full bg-slate-800/60 border-4 border-slate-600 touch-none select-none"
-        style={{ width: size, height: size }}
-        onTouchStart={(e) => {
+        style={{ width: size, height: size, touchAction: 'none' }}
+        onPointerDown={(e) => {
           e.preventDefault();
-          const touch = e.changedTouches[0];
-          if (touch) handleStart(touch.clientX, touch.clientY, touch.identifier);
+          // 尝试捕获 pointer 到 Joystick 上（部分浏览器支持）
+          (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+          handleStart(e.clientX, e.clientY, e.pointerId);
         }}
-        onTouchMove={(e) => {
-          e.preventDefault();
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === pointerIdRef.current) {
-              updatePosition(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
-              break;
-            }
-          }
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === pointerIdRef.current) {
-              handleEnd();
-              break;
-            }
-          }
-        }}
-        onTouchCancel={handleEnd}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          handleStart(e.clientX, e.clientY, -1);
-        }}
-        onMouseMove={(e) => {
-          if (pointerIdRef.current === -1) updatePosition(e.clientX, e.clientY);
-        }}
-        onMouseUp={handleEnd}
-        onMouseLeave={handleEnd}
       >
         <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-lg pointer-events-none font-bold">
           <span style={{ position: 'absolute', top: 6 }}>↑</span>
