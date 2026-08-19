@@ -4,6 +4,7 @@ import { AiSideSelector } from './AiSideSelector';
 import { OrientationPrompt } from './OrientationPrompt';
 import { GameControls } from './GameControls';
 import { ClearCacheButton } from './ClearCacheButton';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface XiangqiGameProps {
   onBack: () => void;
@@ -92,6 +93,32 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
   const [status, setStatus] = useState<'playing' | 'won'>('playing');
   const [winner, setWinner] = useState<0 | 1 | 2>(0);
   const [check, setCheck] = useState<0 | 1 | 2>(0);
+  const [cursor, setCursor] = useState({ row: 9, col: 4 });
+  const lastDirRef = useRef<string | null>(null);
+  const gamepad = useGamepad();
+
+
+  // 手柄光标移动
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (status !== 'playing') return;
+    if (gamepad.direction && gamepad.direction !== lastDirRef.current) {
+      lastDirRef.current = gamepad.direction;
+      if (gamepad.direction === 'LEFT' && cursor.col > 0) setCursor({ ...cursor, col: cursor.col - 1 });
+      else if (gamepad.direction === 'RIGHT' && cursor.col < BOARD_COLS - 1) setCursor({ ...cursor, col: cursor.col + 1 });
+      else if (gamepad.direction === 'UP' && cursor.row > 0) setCursor({ ...cursor, row: cursor.row - 1 });
+      else if (gamepad.direction === 'DOWN' && cursor.row < BOARD_ROWS - 1) setCursor({ ...cursor, row: cursor.row + 1 });
+    } else if (!gamepad.direction) {
+      lastDirRef.current = null;
+    }
+  }, [gamepad.direction, cursor, status]);
+
+  // 手柄 B 键：取消选择
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (!gamepad.buttons.b) return;
+    if (selected) setSelected(null);
+  }, [gamepad.buttons.b, selected]);
 
   // 容器引用：用于测量实际可用尺寸
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1141,6 +1168,27 @@ export const XiangqiGame = ({ onBack }: XiangqiGameProps) => {
                     </g>
                   );
                 }))}
+
+                {/* 黄色光标高亮（当前光标位置） */}
+                {status === 'playing' && (() => {
+                  const ccx = LOGIC_PADDING + cursor.col * LOGIC_POINT_SPACING;
+                  const ccy = LOGIC_PADDING + cursor.row * LOGIC_POINT_SPACING;
+                  return (
+                    <g key="cursor" pointerEvents="none">
+                      <circle
+                        cx={ccx}
+                        cy={ccy}
+                        r={LOGIC_PIECE_SIZE / 2 + 2}
+                        fill="none"
+                        stroke="#facc15"
+                        strokeWidth="3"
+                        opacity="0.9"
+                      >
+                        <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite" />
+                      </circle>
+                    </g>
+                  );
+                })()}
               </svg>
             </>
           )}

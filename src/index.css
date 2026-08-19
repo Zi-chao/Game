@@ -100,3 +100,34 @@ canvas {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.9);
 }
+
+/* ===== 游戏手柄模式 ===== */
+/* 不再隐藏鼠标，保留鼠标光标可见 */
+
+body.gamepad-active button:focus,
+body.gamepad-active a:focus,
+body.gamepad-active [role="button"]:focus,
+body.gamepad-active [tabindex]:focus,
+body.gamepad-active [data-gamepad-focusable]:focus {
+  outline: 3px solid #34d399 !important;
+  outline-offset: 3px !important;
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.4),
+    0 0 20px rgba(52, 211, 153, 0.7),
+    inset 0 0 20px rgba(52, 211, 153, 0.15) !important;
+  transform: scale(1.03);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  z-index: 50;
+  position: relative;
+}
+
+body.gamepad-active button:focus,
+body.gamepad-active [role="button"]:focus,
+body.gamepad-active [tabindex]:focus {
+  background-color: rgba(52, 211, 153, 0.1) !important;
+}
+
+body.gamepad-active button:focus *,
+body.gamepad-active [role="button"]:focus * {
+  color: #6ee7b7 !important;
+}

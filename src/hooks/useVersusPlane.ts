@@ -155,11 +155,11 @@ export const useVersusPlane = () => {
         player1X = Math.min(GAME_WIDTH - PLAYER_WIDTH, player1X + PLAYER_SPEED);
       }
 
-      // 玩家2移动 (Arrow Left/Right)
-      if (keysPressed.current.has('arrowleft')) {
+      // 玩家2移动 (Arrow Left/Right 或 手柄)
+      if (keysPressed.current.has('arrowleft') || keysPressed.current.has('gamepad2_left')) {
         player2X = Math.max(0, player2X - PLAYER_SPEED);
       }
-      if (keysPressed.current.has('arrowright')) {
+      if (keysPressed.current.has('arrowright') || keysPressed.current.has('gamepad2_right')) {
         player2X = Math.min(GAME_WIDTH - PLAYER_WIDTH, player2X + PLAYER_SPEED);
       }
 
@@ -306,6 +306,32 @@ export const useVersusPlane = () => {
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
+  }, []);
+
+  // 手柄轮询 - 玩家2用手柄控制（左摇杆左右移动，RT/A 射击）
+  useEffect(() => {
+    let raf = 0;
+    const poll = () => {
+      const gps = navigator.getGamepads?.();
+      const gp = gps?.[0];
+      if (gp) {
+        // 玩家2左摇杆控制（用任意一个摇杆，避开玩家1如果他们用键盘）
+        const x = gp.axes[0] || 0;  // 左摇杆 X
+        if (x < -0.3) keysPressed.current.add('gamepad2_left');
+        else keysPressed.current.delete('gamepad2_left');
+        if (x > 0.3) keysPressed.current.add('gamepad2_right');
+        else keysPressed.current.delete('gamepad2_right');
+        // 玩家2射击：RT (button 7) 或 A (button 0)
+        if (gp.buttons[7]?.value > 0.1 || gp.buttons[0]?.pressed) {
+          keysPressed.current.add('fire2_pressed');
+        } else {
+          keysPressed.current.delete('fire2_pressed');
+        }
+      }
+      raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   return {

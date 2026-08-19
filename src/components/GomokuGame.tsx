@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGomoku } from '../hooks/useGomoku';
 import { BOARD_SIZE } from '../utils/gomokuUtils';
 import { OrientationPrompt } from './OrientationPrompt';
@@ -6,6 +6,7 @@ import { GameControls } from './GameControls';
 import { GomokuMode } from '../types/game';
 import { AiSideSelector } from './AiSideSelector';
 import { ClearCacheButton } from './ClearCacheButton';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface GomokuGameProps {
   onBack: () => void;
@@ -13,7 +14,40 @@ interface GomokuGameProps {
 
 export const GomokuGame = ({ onBack }: GomokuGameProps) => {
   const { state, best, aiSide, reset, placeStone, setMode, setAiSide } = useGomoku();
+  const gamepad = useGamepad();
   const [cellSize, setCellSize] = useState(36);
+  const [cursor, setCursor] = useState({ row: 7, col: 7 });
+  const lastMoveDirRef = useRef<string | null>(null);
+  // 人类玩家：与 aiSide 相反
+  const humanPlayer: 1 | 2 = aiSide === 1 ? 2 : 1;
+
+
+  // 手柄光标移动
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (state.status !== 'playing') return;
+    if (state.mode === 'pve' && state.currentPlayer !== humanPlayer) return;
+    if (gamepad.direction && gamepad.direction !== lastMoveDirRef.current) {
+      lastMoveDirRef.current = gamepad.direction;
+      if (gamepad.direction === 'LEFT' && cursor.col > 0) setCursor({ ...cursor, col: cursor.col - 1 });
+      else if (gamepad.direction === 'RIGHT' && cursor.col < BOARD_SIZE - 1) setCursor({ ...cursor, col: cursor.col + 1 });
+      else if (gamepad.direction === 'UP' && cursor.row > 0) setCursor({ ...cursor, row: cursor.row - 1 });
+      else if (gamepad.direction === 'DOWN' && cursor.row < BOARD_SIZE - 1) setCursor({ ...cursor, row: cursor.row + 1 });
+    } else if (!gamepad.direction) {
+      lastMoveDirRef.current = null;
+    }
+  }, [gamepad.direction, cursor, state.status, state.mode, state.currentPlayer, humanPlayer]);
+
+  // 手柄 A 键落子
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (!gamepad.buttons.a) return;
+    if (state.status !== 'playing') return;
+    if (state.mode === 'pve' && state.currentPlayer !== humanPlayer) return;
+    if (state.board[cursor.row][cursor.col] === 0) {
+      placeStone(cursor.row, cursor.col);
+    }
+  }, [gamepad.buttons.a, cursor, state, placeStone]);
 
   // 从sessionStorage读取模式
   useEffect(() => {
@@ -42,9 +76,6 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
       window.removeEventListener('orientationchange', checkSize);
     };
   }, []);
-
-  // 人类玩家：与 aiSide 相反
-  const humanPlayer: 1 | 2 = aiSide === 1 ? 2 : 1;
 
   // 点击位置转格子坐标：点击 canvas 任意位置，找出最近的可下子格子
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -203,6 +234,22 @@ export const GomokuGame = ({ onBack }: GomokuGameProps) => {
                 />
               );
             })
+          )}
+
+          {/* 黄色光标高亮（玩家回合且该位置可下子） */}
+          {state.status === 'playing' &&
+           !(state.mode === 'pve' && state.currentPlayer !== humanPlayer) &&
+           state.board[cursor.row][cursor.col] === 0 && (
+            <div
+              className="absolute rounded-full border-4 border-yellow-300 pointer-events-none animate-pulse"
+              style={{
+                left: cursor.col * cellSize - cellSize / 2 + 2,
+                top: cursor.row * cellSize - cellSize / 2 + 2,
+                width: cellSize - 4,
+                height: cellSize - 4,
+                boxShadow: '0 0 20px rgba(252, 211, 77, 0.8), inset 0 0 20px rgba(252, 211, 77, 0.3)',
+              }}
+            />
           )}
         </div>
 

@@ -238,6 +238,37 @@ export const useVersusSnake = () => {
     };
   }, [state.isPlaying, state.winner, changeDirection1, changeDirection2, start, togglePause, reset]);
 
+  // 手柄轮询 - 玩家2用手柄控制（左摇杆/D-pad 方向，Start 开始，A 确认）
+  useEffect(() => {
+    let raf = 0;
+    const poll = () => {
+      const gps = navigator.getGamepads?.();
+      const gp = gps?.[0];
+      if (gp) {
+        // 玩家2方向：左摇杆 + D-pad
+        const lx = gp.axes[0] || 0;
+        const ly = gp.axes[1] || 0;
+        const dup = gp.buttons[12]?.pressed || false;
+        const ddown = gp.buttons[13]?.pressed || false;
+        const dleft = gp.buttons[14]?.pressed || false;
+        const dright = gp.buttons[15]?.pressed || false;
+        // 上下方向（取最大）
+        if (ly < -0.3 || dup) changeDirection2('UP');
+        else if (ly > 0.3 || ddown) changeDirection2('DOWN');
+        if (lx < -0.3 || dleft) changeDirection2('LEFT');
+        else if (lx > 0.3 || dright) changeDirection2('RIGHT');
+        // Start 键：开始/暂停
+        if (gp.buttons[9]?.pressed) {
+          if (!state.isPlaying || state.winner !== null) start();
+          else togglePause();
+        }
+      }
+      raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(raf);
+  }, [changeDirection2, state.isPlaying, state.winner, start, togglePause]);
+
   // 卸载清理
   useEffect(() => {
     return () => {

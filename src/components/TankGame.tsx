@@ -4,6 +4,7 @@ import { ClearCacheButton } from './ClearCacheButton';
 import { GameControls } from './GameControls';
 import { OrientationPrompt } from './OrientationPrompt';
 import { Joystick } from './Joystick';
+import { useGamepad } from '../hooks/useGamepad';
 import { Direction } from '../types/game';
 import {
   TILE_SIZE,
@@ -57,7 +58,19 @@ const drawTank = (
 
 export const TankGame = ({ onBack }: TankGameProps) => {
   const { gameState, map, requiredKills, killCount, start, reset, setMobileMove } = useTankGame();
+  const gamepad = useGamepad();
+  const lastDirRef = useRef<Direction | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+
+  // LB/RB 重新开始 - 使用 ref 避免闭包问题
+  const resetRef = useRef(reset);
+  useEffect(() => { resetRef.current = reset; }, [reset]);
+  useEffect(() => {
+    const onRestart = () => resetRef.current();
+    window.addEventListener('gamepad:restart', onRestart);
+    return () => window.removeEventListener('gamepad:restart', onRestart);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -129,6 +142,54 @@ export const TankGame = ({ onBack }: TankGameProps) => {
       ctx.fillRect(bullet.x - 2, bullet.y - 2, BULLET_SIZE + 4, BULLET_SIZE + 4);
     });
   }, [gameState, map]);
+
+  // D-pad / 左摇杆专注游戏控制（不受 UI 模式影响）
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (gamepad.direction && gamepad.direction !== lastDirRef.current) {
+      lastDirRef.current = gamepad.direction;
+      setMobileMove('up', false);
+      setMobileMove('down', false);
+      setMobileMove('left', false);
+      setMobileMove('right', false);
+      if (gamepad.direction === 'UP') setMobileMove('up', true);
+      else if (gamepad.direction === 'DOWN') setMobileMove('down', true);
+      else if (gamepad.direction === 'LEFT') setMobileMove('left', true);
+      else if (gamepad.direction === 'RIGHT') setMobileMove('right', true);
+    } else if (!gamepad.direction) {
+      lastDirRef.current = null;
+      setMobileMove('up', false);
+      setMobileMove('down', false);
+      setMobileMove('left', false);
+      setMobileMove('right', false);
+    }
+  }, [gamepad, setMobileMove]);
+
+  // LB 键：开始/暂停
+  useEffect(() => {
+    const onLB = () => {
+      if (gameState.status === 'idle') {
+        start();
+      } else if (gameState.status === 'playing') {
+        start(); // 暂停/继续
+      }
+    };
+    window.addEventListener('gamepad:lb', onLB);
+    return () => window.removeEventListener('gamepad:lb', onLB);
+  }, [gameState.status, start]);
+
+  // ZR 键：射击（关键修复：发射后立即重置，否则会连续发射）
+  useEffect(() => {
+    const onFire = () => {
+      if (gameState.status === 'playing') {
+        setMobileMove('shoot', true);
+        // 关键：发射后立即重置，否则会一直发射
+        setTimeout(() => setMobileMove('shoot', false), 50);
+      }
+    };
+    window.addEventListener('gamepad:fire', onFire);
+    return () => window.removeEventListener('gamepad:fire', onFire);
+  }, [gameState.status, setMobileMove]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">

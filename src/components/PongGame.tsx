@@ -3,78 +3,166 @@ import { usePong } from '../hooks/usePong';
 import { ClearCacheButton } from './ClearCacheButton';
 import { GameControls } from './GameControls';
 import { OrientationPrompt } from './OrientationPrompt';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface PongGameProps {
   onBack: () => void;
 }
 
 export const PongGame = ({ onBack }: PongGameProps) => {
-  const { state, requiredScore, start, reset, togglePause, setMobileMove, gameWidth, gameHeight } = usePong();
+  const { state, requiredScore, start, reset, togglePause, setPaddlePos, gameWidth, gameHeight } = usePong();
+  const gamepad = useGamepad();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // 跟踪每个手指的分配：identifier -> 1|2
+  const touchAssignRef = useRef<Map<number, 1 | 2>>(new Map());
 
+  // 手柄控制玩家2（顶部挡板）
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    const ax = gamepad.rawAxes.x;
+    if (Math.abs(ax) > 0.2) {
+      setPaddlePos(2, state.paddle2.x + ax * 20);
+    }
+  }, [gamepad.rawAxes.x, gamepad.connected, state.paddle2.x, setPaddlePos]);
+
+  // canvas 渲染
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 背景
     ctx.fillStyle = '#0a0e27';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, gameWidth, gameHeight);
 
-    // 中线
-    ctx.strokeStyle = '#475569';
+    // 中间分界线
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 2;
-    ctx.setLineDash([10, 10]);
+    ctx.setLineDash([8, 6]);
     ctx.beginPath();
     ctx.moveTo(0, gameHeight / 2);
     ctx.lineTo(gameWidth, gameHeight / 2);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 玩家1挡板（底部，绿色）
-    ctx.fillStyle = '#22c55e';
-    ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 10;
-    ctx.fillRect(
-      state.paddle1.x,
-      state.paddle1.y,
-      state.paddle1.width,
-      state.paddle1.height
-    );
+    // 玩家区域标签
+    ctx.fillStyle = 'rgba(96, 165, 250, 0.12)';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('P2 区域', 10, 30);
+    ctx.fillStyle = 'rgba(52, 211, 153, 0.12)';
+    ctx.fillText('P1 区域', 10, gameHeight - 10);
+
+    // 中点圆
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.arc(gameWidth / 2, gameHeight / 2, 30, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 挡板
+    ctx.fillStyle = '#34d399';
+    ctx.shadowColor = '#34d399';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(state.paddle1.x, state.paddle1.y, state.paddle1.width, state.paddle1.height);
     ctx.shadowBlur = 0;
 
-    // 玩家2挡板（顶部，蓝色）
-    ctx.fillStyle = '#3b82f6';
-    ctx.shadowColor = '#3b82f6';
-    ctx.shadowBlur = 10;
-    ctx.fillRect(
-      state.paddle2.x,
-      state.paddle2.y,
-      state.paddle2.width,
-      state.paddle2.height
-    );
+    ctx.fillStyle = '#60a5fa';
+    ctx.shadowColor = '#60a5fa';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(state.paddle2.x, state.paddle2.y, state.paddle2.width, state.paddle2.height);
     ctx.shadowBlur = 0;
 
     // 球
-    const gradient = ctx.createRadialGradient(
-      state.ball.x,
-      state.ball.y,
-      0,
-      state.ball.x,
-      state.ball.y,
-      state.ball.radius
-    );
-    gradient.addColorStop(0, '#fbbf24');
-    gradient.addColorStop(1, '#f59e0b');
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = '#fbbf24';
     ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
   }, [state, gameWidth, gameHeight]);
+
+  // 全屏触屏跟随：监听 window 上的 touch 事件，处理所有手指
+  useEffect(() => {
+    const handleTouches = (e: TouchEvent) => {
+      // 排除按钮和交互元素，让原生 click 触发
+      const t = e.target as HTMLElement;
+      if (t?.closest('button') || t?.tagName === 'BUTTON' || t?.tagName === 'INPUT') return;
+      e.preventDefault();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = gameWidth / rect.width;
+
+      const assign = touchAssignRef.current;
+      const currentIds = new Set<number>();
+
+      for (let i = 0; i < e.touches.length; i++) {
+        const tt = e.touches[i];
+        currentIds.add(tt.identifier);
+        const xInGame = (tt.clientX - rect.left) * scaleX;
+        const screenMid = window.innerHeight / 2;
+        const isTop = tt.clientY < screenMid;
+
+        let player = assign.get(tt.identifier);
+        if (!player) {
+          if (isTop && !Array.from(assign.values()).includes(2)) player = 2;
+          else if (!isTop && !Array.from(assign.values()).includes(1)) player = 1;
+          else player = isTop ? 2 : 1;
+          assign.set(tt.identifier, player);
+        }
+
+        if (player === 2) setPaddlePos(2, xInGame - state.paddle2.width / 2);
+        else setPaddlePos(1, xInGame - state.paddle1.width / 2);
+      }
+
+      for (const id of assign.keys()) {
+        if (!currentIds.has(id)) assign.delete(id);
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouches, { passive: false });
+    window.addEventListener('touchmove', handleTouches, { passive: false });
+    window.addEventListener('touchend', handleTouches, { passive: false });
+    window.addEventListener('touchcancel', handleTouches, { passive: false });
+    return () => {
+      window.removeEventListener('touchstart', handleTouches);
+      window.removeEventListener('touchmove', handleTouches);
+      window.removeEventListener('touchend', handleTouches);
+      window.removeEventListener('touchcancel', handleTouches);
+    };
+  }, [gameWidth, gameHeight, setPaddlePos, state.paddle1.width, state.paddle2.width]);
+
+  // 鼠标拖动（桌面测试）
+  useEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement)?.closest('button')) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const xInGame = (e.clientX - rect.left) * (gameWidth / rect.width);
+      const screenMid = window.innerHeight / 2;
+      const isTop = e.clientY < screenMid;
+      if (isTop) setPaddlePos(2, xInGame - state.paddle2.width / 2);
+      else setPaddlePos(1, xInGame - state.paddle1.width / 2);
+
+      const onMove = (ev: MouseEvent) => {
+        if ((ev.target as HTMLElement)?.closest('button')) return;
+        const xInGame2 = (ev.clientX - rect.left) * (gameWidth / rect.width);
+        const isTop2 = ev.clientY < screenMid;
+        if (isTop2) setPaddlePos(2, xInGame2 - state.paddle2.width / 2);
+        else setPaddlePos(1, xInGame2 - state.paddle1.width / 2);
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousedown', onMouseDown);
+    return () => window.removeEventListener('mousedown', onMouseDown);
+  }, [gameWidth, gameHeight, setPaddlePos, state.paddle1.width, state.paddle2.width]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-2 md:p-4 relative">
@@ -109,37 +197,12 @@ export const PongGame = ({ onBack }: PongGameProps) => {
         </div>
       </div>
 
-      {/* 玩家1控制 - 在游戏下方（移动端） */}
-      <div className="md:hidden w-full mt-3 px-4 select-none">
-        <div className="flex flex-col items-center">
-          <div className="text-xs text-emerald-300 mb-1">🟢 P1</div>
-          <div className="flex gap-2">
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'left', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'left', false); }}
-              onTouchCancel={() => setMobileMove(1, 'left', false)}
-              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
-            >
-              ←
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'right', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'right', false); }}
-              onTouchCancel={() => setMobileMove(1, 'right', false)}
-              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
-            >
-              →
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="relative w-full max-w-2xl">
         <canvas
           ref={canvasRef}
           width={gameWidth}
           height={gameHeight}
-          className="rounded-lg shadow-2xl border-2 md:border-4 border-purple-700 w-full"
+          className="rounded-lg shadow-2xl border-2 md:border-4 border-purple-700 w-full touch-none"
           style={{ aspectRatio: `${gameWidth} / ${gameHeight}` }}
         />
 
@@ -153,7 +216,7 @@ export const PongGame = ({ onBack }: PongGameProps) => {
             )}
             {state.winner === 2 && (
               <>
-                <div className="text-4xl md:text-5xl mb-2 animate-bounce">🏆</div>
+                <div className="text-4xl md:text-5ml mb-2 animate-bounce">🏆</div>
                 <div className="text-2xl md:text-4xl font-bold text-blue-400 mb-2 animate-pulse">玩家2获胜！</div>
               </>
             )}
@@ -166,8 +229,8 @@ export const PongGame = ({ onBack }: PongGameProps) => {
               <>
                 <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-3">重力小球</div>
                 <div className="text-xs md:text-sm text-slate-300 text-center mb-2 max-w-md">
-                  <span className="text-emerald-300">🟢 玩家1</span> A/D 移动<br />
-                  <span className="text-blue-300">🔵 玩家2</span> 方向键移动<br />
+                  <span className="text-emerald-300">🟢 玩家1</span> A/D 或触屏下方<br />
+                  <span className="text-blue-300">🔵 玩家2</span> 方向键 或触屏上方<br />
                   反弹球让对方接不住！先得 {requiredScore} 分
                 </div>
               </>
@@ -193,29 +256,9 @@ export const PongGame = ({ onBack }: PongGameProps) => {
         )}
       </div>
 
-      {/* 玩家1控制 - 在游戏下方（移动端） */}
-      <div className="md:hidden w-full mt-3 px-4 select-none">
-        <div className="flex flex-col items-center">
-          <div className="text-xs text-emerald-300 mb-1">🟢 P1</div>
-          <div className="flex gap-2">
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'left', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'left', false); }}
-              onTouchCancel={() => setMobileMove(1, 'left', false)}
-              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
-            >
-              ←
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); setMobileMove(1, 'right', true); }}
-              onTouchEnd={(e) => { e.preventDefault(); setMobileMove(1, 'right', false); }}
-              onTouchCancel={() => setMobileMove(1, 'right', false)}
-              className="w-14 h-14 bg-emerald-700 active:bg-emerald-500 text-white text-xl rounded-lg font-bold touch-none"
-            >
-              →
-            </button>
-          </div>
-        </div>
+      {/* 触屏控制提示 */}
+      <div className="md:hidden mt-3 text-center text-xs text-slate-400 px-4">
+        <p>👆 全屏双点触控：上 = P2，下 = P1（按 X 坐标跟随）</p>
       </div>
 
       <div className="hidden md:block mt-3 text-slate-400 text-xs text-center">

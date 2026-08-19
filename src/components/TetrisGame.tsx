@@ -4,6 +4,8 @@ import { BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, COLORS } from '../utils/tetrisUti
 import { GameControls } from './GameControls';
 import { OrientationPrompt } from './OrientationPrompt';
 import { ClearCacheButton } from './ClearCacheButton';
+import { useGamepad } from '../hooks/useGamepad';
+import { Direction } from '../types/game';
 
 interface TetrisGameProps {
   onBack: () => void;
@@ -11,8 +13,20 @@ interface TetrisGameProps {
 
 export const TetrisGame = ({ onBack }: TetrisGameProps) => {
   const { gameState, startGame, togglePause, resetGame, move, rotatePiece, hardDrop } = useTetrisGame();
+  const gamepad = useGamepad();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysPressed = useRef<Set<string>>(new Set());
+  const lastDirRef = useRef<Direction | null>(null);
+
+
+  // LB/RB 重新开始 - 使用 ref 避免闭包问题
+  const resetGameRef = useRef(resetGame);
+  useEffect(() => { resetGameRef.current = resetGame; }, [resetGame]);
+  useEffect(() => {
+    const onRestart = () => resetGameRef.current();
+    window.addEventListener('gamepad:restart', onRestart);
+    return () => window.removeEventListener('gamepad:restart', onRestart);
+  }, []);
 
   // 绘制游戏
   useEffect(() => {
@@ -195,6 +209,72 @@ export const TetrisGame = ({ onBack }: TetrisGameProps) => {
       window.removeEventListener('keyup', keyUpHandler);
     };
   }, [handleKey]);
+
+  // D-pad / 左摇杆专注游戏控制（不受 UI 模式影响）
+  // 使用 ref 避免 setInterval 被频繁重置
+  const gamepadRef = useRef(gamepad);
+  useEffect(() => { gamepadRef.current = gamepad; }, [gamepad]);
+  const playing = gameState.isPlaying && !gameState.isPaused && !gameState.isGameOver;
+
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (gamepad.direction && gamepad.direction !== lastDirRef.current) {
+      lastDirRef.current = gamepad.direction;
+      if (playing) {
+        if (gamepad.direction === 'UP') rotatePiece();
+        else if (gamepad.direction === 'DOWN') move(0, 1);
+      }
+    } else if (!gamepad.direction) {
+      lastDirRef.current = null;
+    }
+  }, [gamepad.direction, playing, rotatePiece, move]);
+
+  // 左右移动：定时检测摇杆，无极平滑移动（速度跟推杆幅度成正比）
+  useEffect(() => {
+    if (!playing) return;
+    let lastMove = 0;
+    const id = setInterval(() => {
+      const x = gamepadRef.current.rawAxes.x;
+      if (Math.abs(x) < 0.3) { lastMove = 0; return; }
+      // 无极移动：间隔 = 400ms - |x| * 200ms
+      // 摇杆轻推 (0.3): 340ms → 2.9 格/秒
+      // 摇杆半推 (0.5): 300ms → 3.3 格/秒
+      // 摇杆全推 (1.0): 200ms → 5 格/秒
+      const interval = 400 - Math.abs(x) * 200;
+      const now = Date.now();
+      if (now - lastMove >= interval) {
+        lastMove = now;
+        const dir = x < 0 ? -1 : 1;
+        move(dir, 0);
+      }
+    }, 50);
+    return () => clearInterval(id);
+  }, [playing, move]);
+
+  // LB 键：开始/暂停
+  useEffect(() => {
+    const onLB = () => {
+      if (!gameState.isPlaying || gameState.isGameOver) {
+        startGame();
+      } else if (gameState.isPlaying && !gameState.isGameOver) {
+        togglePause();
+      }
+    };
+    window.addEventListener('gamepad:lb', onLB);
+    return () => window.removeEventListener('gamepad:lb', onLB);
+  }, [gameState.isPlaying, gameState.isGameOver, startGame, togglePause]);
+
+  // ZR 键：快速下落
+  useEffect(() => {
+    const onFire = () => {
+      const playing = gameState.isPlaying && !gameState.isPaused && !gameState.isGameOver;
+      if (playing) {
+        hardDrop();
+      }
+    };
+    window.addEventListener('gamepad:fire', onFire);
+    return () => window.removeEventListener('gamepad:fire', onFire);
+  }, [gameState.isPlaying, gameState.isPaused, gameState.isGameOver, hardDrop]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-4 relative">

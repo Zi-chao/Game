@@ -3,9 +3,9 @@ import { useOthello } from '../hooks/useOthello';
 import { BOARD_SIZE } from '../utils/othelloUtils';
 import { OrientationPrompt } from './OrientationPrompt';
 import { GameControls } from './GameControls';
-import { OthelloMode } from '../types/game';
 import { AiSideSelector } from './AiSideSelector';
 import { ClearCacheButton } from './ClearCacheButton';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface OthelloGameProps {
   onBack: () => void;
@@ -13,39 +13,51 @@ interface OthelloGameProps {
 
 export const OthelloGame = ({ onBack }: OthelloGameProps) => {
   const { state, best, aiSide, playerMove, aiMove, reset, setMode, setAiSide } = useOthello();
+  const gamepad = useGamepad();
   const aiTimerRef = useRef<number | null>(null);
-  const [cellSize, setCellSize] = useState(44);
-
-  // 从sessionStorage读取模式
-  useEffect(() => {
-    const savedMode = sessionStorage.getItem('game_mode_othello') as OthelloMode | null;
-    if (savedMode && (savedMode === 'pve' || savedMode === 'pvp')) {
-      setMode(savedMode);
-    }
-  }, [setMode]);
-
-  useEffect(() => {
-    const checkSize = () => {
-      const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
-      if (isMobile) {
-        const maxWidth = window.innerWidth - 20;
-        const size = Math.floor(maxWidth / BOARD_SIZE);
-        setCellSize(Math.max(size, 28));
-      } else {
-        setCellSize(44);
-      }
-    };
-    checkSize();
-    window.addEventListener('resize', checkSize);
-    window.addEventListener('orientationchange', checkSize);
-    return () => {
-      window.removeEventListener('resize', checkSize);
-      window.removeEventListener('orientationchange', checkSize);
-    };
-  }, []);
-
+  const [cursor, setCursor] = useState({ row: 3, col: 3 });
+  const cellSize = 44;
+  const lastDirRef = useRef<string | null>(null);
   // 人类玩家：与 aiSide 相反
   const humanPlayer: 1 | 2 = aiSide === 1 ? 2 : 1;
+
+  const isValidMove = (row: number, col: number) => {
+    return state.validMoves.some(m => m.row === row && m.col === col);
+  };
+
+  const getFlipCount = (row: number, col: number) => {
+    const move = state.validMoves.find(m => m.row === row && m.col === col);
+    return move?.flips.length || 0;
+  };
+
+  // 从sessionStorage读取模式
+
+  // 手柄光标移动
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (state.status !== 'playing') return;
+    if (state.mode === 'pve' && state.currentPlayer !== humanPlayer) return;
+    if (gamepad.direction && gamepad.direction !== lastDirRef.current) {
+      lastDirRef.current = gamepad.direction;
+      if (gamepad.direction === 'LEFT' && cursor.col > 0) setCursor({ ...cursor, col: cursor.col - 1 });
+      else if (gamepad.direction === 'RIGHT' && cursor.col < BOARD_SIZE - 1) setCursor({ ...cursor, col: cursor.col + 1 });
+      else if (gamepad.direction === 'UP' && cursor.row > 0) setCursor({ ...cursor, row: cursor.row - 1 });
+      else if (gamepad.direction === 'DOWN' && cursor.row < BOARD_SIZE - 1) setCursor({ ...cursor, row: cursor.row + 1 });
+    } else if (!gamepad.direction) {
+      lastDirRef.current = null;
+    }
+  }, [gamepad.direction, cursor, state.status, state.mode, state.currentPlayer, humanPlayer]);
+
+  // 手柄 A 键落子
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (!gamepad.buttons.a) return;
+    if (state.status !== 'playing') return;
+    if (state.mode === 'pve' && state.currentPlayer !== humanPlayer) return;
+    if (isValidMove(cursor.row, cursor.col)) {
+      playerMove(cursor.row, cursor.col);
+    }
+  }, [gamepad.buttons.a, cursor, state, playerMove, isValidMove]);
 
   useEffect(() => {
     if (state.mode === 'pve' && state.currentPlayer === aiSide && state.status === 'playing') {
@@ -60,15 +72,6 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
       };
     }
   }, [state.currentPlayer, state.validMoves, state.status, state.mode, aiMove, aiSide]);
-
-  const isValidMove = (row: number, col: number) => {
-    return state.validMoves.some(m => m.row === row && m.col === col);
-  };
-
-  const getFlipCount = (row: number, col: number) => {
-    const move = state.validMoves.find(m => m.row === row && m.col === col);
-    return move?.flips.length || 0;
-  };
 
   const handleCellClick = (row: number, col: number) => {
     if (state.status !== 'playing') return;
@@ -138,13 +141,17 @@ export const OthelloGame = ({ onBack }: OthelloGameProps) => {
               const flipCount = getFlipCount(r, c);
               // 当前玩家是否可以操作
               const canPlay = state.mode === 'pve' ? state.currentPlayer === humanPlayer : true;
+              const isCursor = r === cursor.row && c === cursor.col && state.status === 'playing' && canPlay;
               return (
                 <button
                   key={`${r}-${c}`}
                   onClick={() => handleCellClick(r, c)}
+                  onMouseEnter={() => setCursor({ row: r, col: c })}
                   disabled={!valid || state.status !== 'playing' || !canPlay}
                   className={`relative flex items-center justify-center transition-all ${
-                    valid && canPlay
+                    isCursor
+                      ? 'ring-4 ring-yellow-300 z-10 scale-110'
+                      : valid && canPlay
                       ? 'cursor-pointer hover:bg-yellow-400/30 hover:scale-105'
                       : 'cursor-default'
                   }`}

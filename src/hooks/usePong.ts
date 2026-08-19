@@ -279,6 +279,17 @@ export const usePong = () => {
     mobileMoveRef.current[key] = pressed;
   }, []);
 
+  // 触屏跟随：直接设置挡板 X 坐标（实时跟随手指）
+  const setPaddlePos = useCallback((player: 1 | 2, x: number) => {
+    const clamped = Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, x));
+    stateRef.current = {
+      ...stateRef.current,
+      paddle1: player === 1 ? { ...stateRef.current.paddle1, x: clamped } : stateRef.current.paddle1,
+      paddle2: player === 2 ? { ...stateRef.current.paddle2, x: clamped } : stateRef.current.paddle2,
+    };
+    render();
+  }, [render]);
+
   return {
     state,
     best: getBest(),
@@ -287,6 +298,7 @@ export const usePong = () => {
     reset,
     togglePause,
     setMobileMove,
+    setPaddlePos,
     gameWidth: GAME_WIDTH,
     gameHeight: GAME_HEIGHT,
   };

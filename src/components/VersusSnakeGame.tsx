@@ -4,6 +4,7 @@ import { VERSUS_GRID_SIZE, VERSUS_CELL_SIZE } from '../utils/versusUtils';
 import { ClearCacheButton } from './ClearCacheButton';
 import { GameControls } from './GameControls';
 import { OrientationPrompt } from './OrientationPrompt';
+import { Joystick } from './Joystick';
 
 interface VersusSnakeGameProps {
   onBack: () => void;
@@ -105,37 +106,14 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
       <GameControls />
       <OrientationPrompt mode="portrait" />
 
-      {/* 玩家2控制 - 倒置显示在标题上方，按键镜像 */}
-      <div className="md:hidden w-full mt-2 px-3 select-none">
-        <div className="text-xs text-blue-300 text-center mb-1">🔵 玩家2 (倒着玩)</div>
-        <div className="flex flex-col items-center gap-1 rotate-180">
-          <button
-            onTouchStart={(e) => { e.preventDefault(); changeDirection2('DOWN'); }}
-            className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
-          >
-            ↑
-          </button>
-          <div className="flex gap-1">
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('RIGHT'); }}
-              className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
-            >
-              ←
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('UP'); }}
-              className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
-            >
-              ↓
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection2('LEFT'); }}
-              className="w-10 h-10 bg-blue-700 active:bg-blue-500 text-white text-base rounded-lg font-bold touch-none"
-            >
-              →
-            </button>
-          </div>
-        </div>
+      {/* 玩家2控制 - 上方 */}
+      <div className="md:hidden w-full mt-2 px-3 select-none flex justify-center">
+        <Joystick
+          onChange={(dir) => { if (dir) changeDirection2(dir); }}
+          color="#3b82f6"
+          size={120}
+          label="🔵 玩家2"
+        />
       </div>
 
       <h1 className="hidden md:block text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-2 md:mb-3 mt-4 md:mt-8">
@@ -216,42 +194,19 @@ export const VersusSnakeGame = ({ onBack }: VersusSnakeGameProps) => {
         )}
       </div>
 
-      {/* 玩家1控制 - 在游戏下方 */}
-      <div className="md:hidden w-full mt-2 px-3 select-none">
-        <div className="text-xs text-emerald-300 text-center mb-1">🟢 玩家1</div>
-        <div className="flex flex-col items-center gap-1">
-          <button
-            onTouchStart={(e) => { e.preventDefault(); changeDirection1('UP'); }}
-            className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
-          >
-            W
-          </button>
-          <div className="flex gap-1">
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection1('LEFT'); }}
-              className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
-            >
-              A
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection1('DOWN'); }}
-              className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
-            >
-              S
-            </button>
-            <button
-              onTouchStart={(e) => { e.preventDefault(); changeDirection1('RIGHT'); }}
-              className="w-10 h-10 bg-emerald-700 active:bg-emerald-500 text-white text-base rounded-lg font-bold touch-none"
-            >
-              D
-            </button>
-          </div>
-        </div>
+      {/* 玩家1控制 - 下方 */}
+      <div className="md:hidden w-full mt-2 px-3 select-none flex justify-center">
+        <Joystick
+          onChange={(dir) => { if (dir) changeDirection1(dir); }}
+          color="#22c55e"
+          size={120}
+          label="🟢 玩家1"
+        />
       </div>
 
       <div className="mt-2 md:mt-4 text-slate-400 text-xs text-center">
         <p className="hidden md:block">🟢 WASD | 🔵 方向键 | 空格 开始/暂停 | R 重置</p>
-        <p className="md:hidden">玩家1点下方按钮 / 玩家2点上方按钮(倒置)</p>
+        <p className="md:hidden">上 = 玩家2 摇杆，下 = 玩家1 摇杆</p>
       </div>
     </div>
   );

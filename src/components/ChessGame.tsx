@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { OthelloMode, AiSide } from '../types/game';
 import { AiSideSelector } from './AiSideSelector';
 import { OrientationPrompt } from './OrientationPrompt';
 import { GameControls } from './GameControls';
 import { ClearCacheButton } from './ClearCacheButton';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface ChessGameProps {
   onBack: () => void;
@@ -70,6 +71,48 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
   const [status, setStatus] = useState<'playing' | 'won'>('playing');
   const [winner, setWinner] = useState<0 | 1 | 2>(0);
   const [cellSize, setCellSize] = useState(64);
+  const [cursor, setCursor] = useState({ row: 7, col: 4 });
+  const lastDirRef = useRef<string | null>(null);
+  const handleCellClickRef = useRef<((row: number, col: number) => void) | null>(null);
+  const gamepad = useGamepad();
+
+
+  // 手柄光标移动
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    if (status !== 'playing') return;
+    if (gamepad.direction && gamepad.direction !== lastDirRef.current) {
+      lastDirRef.current = gamepad.direction;
+      if (gamepad.direction === 'LEFT' && cursor.col > 0) setCursor({ ...cursor, col: cursor.col - 1 });
+      else if (gamepad.direction === 'RIGHT' && cursor.col < BOARD_SIZE - 1) setCursor({ ...cursor, col: cursor.col + 1 });
+      else if (gamepad.direction === 'UP' && cursor.row > 0) setCursor({ ...cursor, row: cursor.row - 1 });
+      else if (gamepad.direction === 'DOWN' && cursor.row < BOARD_SIZE - 1) setCursor({ ...cursor, row: cursor.row + 1 });
+    } else if (!gamepad.direction) {
+      lastDirRef.current = null;
+    }
+  }, [gamepad.direction, cursor, status]);
+
+  // 手柄 A 键：点击当前光标（边沿触发：只在按下瞬间触发一次）
+  const lastARef = useRef(false);
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    const aPressed = gamepad.buttons.a;
+    if (aPressed && !lastARef.current && status === 'playing') {
+      handleCellClickRef.current?.(cursor.row, cursor.col);
+    }
+    lastARef.current = aPressed;
+  }, [gamepad.buttons.a, cursor, status]);
+
+  // 手柄 B 键：取消选择（边沿触发）
+  const lastBRef = useRef(false);
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    const bPressed = gamepad.buttons.b;
+    if (bPressed && !lastBRef.current && selected) {
+      setSelected(null);
+    }
+    lastBRef.current = bPressed;
+  }, [gamepad.buttons.b, selected]);
 
   useEffect(() => {
     const checkSize = () => {
@@ -185,11 +228,14 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
     return moves;
   }, [selected, board, currentPlayer]);
 
+  useEffect(() => {
+    handleCellClickRef.current = handleCellClick;
+  });
+
   const handleCellClick = (row: number, col: number) => {
     if (status !== 'playing') return;
     // AI 永远是 color=2, 玩家永远是 color=1
     if (mode === 'pve' && currentPlayer === 2) return;
-
     const piece = board[row][col];
 
     if (selected) {
@@ -501,20 +547,26 @@ export const ChessGame = ({ onBack }: ChessGameProps) => {
       <div className="relative" style={{ width: boardSize, height: boardSize }}>
         {board.map((row, r) => row.map((cell, c) => {
           const isSelected = selected?.row === r && selected?.col === c;
+          const isCursor = r === cursor.row && c === cursor.col && status === 'playing';
           const isLightSquare = (r + c) % 2 === 0;
           return (
             <div
               key={`square-${r}-${c}`}
               onClick={() => handleCellClick(r, c)}
+              onMouseEnter={() => setCursor({ row: r, col: c })}
               className={`absolute flex items-center justify-center transition-all cursor-pointer ${
                 isLightSquare ? 'bg-slate-700' : 'bg-amber-200'
-              } ${isSelected ? 'z-10' : ''}`}
+              } ${isSelected || isCursor ? 'z-10' : ''}`}
               style={{
                 left: c * cellSize,
                 top: r * cellSize,
                 width: cellSize,
                 height: cellSize,
-                boxShadow: isSelected ? 'inset 0 0 0 4px #facc15' : 'none',
+                boxShadow: isSelected
+                  ? 'inset 0 0 0 4px #facc15'
+                  : isCursor
+                  ? 'inset 0 0 0 4px #fb923c, 0 0 20px rgba(251, 146, 60, 0.6)'
+                  : 'none',
               }}
             >
               {cell && (

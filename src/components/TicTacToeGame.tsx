@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useTicTacToe } from '../hooks/useTicTacToe';
-import { OthelloMode } from '../types/game';
 import { OrientationPrompt } from './OrientationPrompt';
 import { GameControls } from './GameControls';
 import { AiSideSelector } from './AiSideSelector';
@@ -11,31 +10,9 @@ interface TicTacToeGameProps {
 }
 
 export const TicTacToeGame = ({ onBack }: TicTacToeGameProps) => {
-  const { state, best, aiSide, makeMove, aiMakeMove, reset, setMode, setAiSide } = useTicTacToe();
-  const aiTimerRef = useRef<number | null>(null);
+  const { state, best, aiSide, makeMove, reset, setMode, setAiSide } = useTicTacToe();
+  const [cursor, setCursor] = useState(4);  // 默认中间
 
-  // 从sessionStorage读取模式
-  useEffect(() => {
-    const savedMode = sessionStorage.getItem('game_mode_tictactoe') as OthelloMode | null;
-    if (savedMode && (savedMode === 'pve' || savedMode === 'pvp')) {
-      setMode(savedMode);
-    }
-  }, [setMode]);
-
-  // AI 自动落子
-  useEffect(() => {
-    if (state.mode === 'pve' && state.currentPlayer === aiSide && state.status === 'playing') {
-      aiTimerRef.current = window.setTimeout(() => {
-        aiMakeMove();
-      }, 400);
-      return () => {
-        if (aiTimerRef.current) {
-          clearTimeout(aiTimerRef.current);
-          aiTimerRef.current = null;
-        }
-      };
-    }
-  }, [state.currentPlayer, state.status, state.mode, aiMakeMove, aiSide]);
 
   const handleCellClick = (index: number) => {
     if (state.status !== 'playing') return;
@@ -47,15 +24,19 @@ export const TicTacToeGame = ({ onBack }: TicTacToeGameProps) => {
   const renderCell = (index: number) => {
     const value = state.board[index];
     const isWinning = state.winningLine?.includes(index);
+    const isCursor = cursor === index && state.status === 'playing' && state.board[index] === 0;
 
     return (
     <button
       key={index}
       onClick={() => handleCellClick(index)}
+      onMouseEnter={() => setCursor(index)}
       disabled={value !== 0 || (state.mode === 'pve' && state.currentPlayer === aiSide)}
-      className={`w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex items-center justify-center text-5xl md:text-6xl font-bold rounded-xl transition-all ${
+      className={`w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex items-center justify-center text-5xl md:text-6xl font-bold rounded-xl transition-all relative ${
         isWinning
           ? 'bg-amber-500/30 border-2 border-amber-400 animate-pulse'
+          : isCursor
+          ? 'bg-yellow-500/40 border-4 border-yellow-300 shadow-lg shadow-yellow-400/50 scale-105'
           : value !== 0
           ? 'bg-slate-700/30 cursor-not-allowed border-2 border-slate-700'
           : state.status === 'playing' && !(state.mode === 'pve' && state.currentPlayer === aiSide)
@@ -63,6 +44,9 @@ export const TicTacToeGame = ({ onBack }: TicTacToeGameProps) => {
           : 'bg-slate-800/30 border-2 border-slate-800 cursor-not-allowed'
       }`}
     >
+        {isCursor && state.board[index] === 0 && (
+          <span className="absolute top-1 right-1 text-yellow-300 text-xs animate-pulse">▼</span>
+        )}
         {value === 1 && <span className="text-blue-400">✕</span>}
         {value === 2 && <span className="text-rose-400">○</span>}
       </button>

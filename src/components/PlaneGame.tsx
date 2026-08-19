@@ -11,6 +11,7 @@ import {
 } from '../utils/planeUtils';
 import { GameControls } from './GameControls';
 import { OrientationPrompt } from './OrientationPrompt';
+import { useGamepad } from '../hooks/useGamepad';
 
 interface PlaneGameProps {
   onBack: () => void;
@@ -18,7 +19,9 @@ interface PlaneGameProps {
 
 export const PlaneGame = ({ onBack }: PlaneGameProps) => {
   const { gameState, startGame, togglePause, resetGame, setPlayerX } = usePlaneGame();
+  const gamepad = useGamepad();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
 
   const handleTouch = (e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -118,6 +121,41 @@ export const PlaneGame = ({ onBack }: PlaneGameProps) => {
       ctx.fillRect(px + PLAYER_WIDTH / 2 - 2, py + PLAYER_HEIGHT, 4, 6);
     }
   }, [gameState]);
+
+  // D-pad / 左摇杆 - 无极平滑移动（速度跟推杆幅度成正比）
+  const gamepadRef = useRef(gamepad);
+  useEffect(() => { gamepadRef.current = gamepad; }, [gamepad]);
+  const playerXRef = useRef(gameState.playerX);
+  useEffect(() => { playerXRef.current = gameState.playerX; }, [gameState.playerX]);
+  useEffect(() => {
+    if (!gamepad.connected) return;
+    const playing = gameState.isPlaying && !gameState.isPaused && !gameState.isGameOver;
+    if (!playing) return;
+    const id = setInterval(() => {
+      const x = gamepadRef.current.rawAxes.x;
+      if (Math.abs(x) < 0.2) return;
+      // 无极移动：速度 = |x| * 6 px/帧
+      const speed = Math.abs(x) * 6;
+      const target = playerXRef.current + x * speed;
+      const clamped = Math.max(0, Math.min(GAME_WIDTH - PLAYER_WIDTH, target));
+      playerXRef.current = clamped;
+      setPlayerX(clamped);
+    }, 16);  // 60fps
+    return () => clearInterval(id);
+  }, [gamepad.connected, gameState.isPlaying, gameState.isPaused, gameState.isGameOver, setPlayerX]);
+
+  // LB 键：开始/暂停
+  useEffect(() => {
+    const onLB = () => {
+      if (!gameState.isPlaying || gameState.isGameOver) {
+        startGame();
+      } else if (gameState.isPlaying && !gameState.isGameOver) {
+        togglePause();
+      }
+    };
+    window.addEventListener('gamepad:lb', onLB);
+    return () => window.removeEventListener('gamepad:lb', onLB);
+  }, [gameState.isPlaying, gameState.isGameOver, startGame, togglePause]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-950 to-slate-900 flex flex-col items-center justify-center pt-[85px] p-4 relative">

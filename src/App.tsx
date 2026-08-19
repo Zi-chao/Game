@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HomePage } from './components/HomePage';
 import { SingleModePage } from './components/SingleModePage';
 import { VersusModePage } from './components/VersusModePage';
@@ -20,6 +20,7 @@ import { ChessGame } from './components/ChessGame';
 import { VersusSnakeGame } from './components/VersusSnakeGame';
 import { VersusPlaneGame } from './components/VersusPlaneGame';
 import { PongGame } from './components/PongGame';
+import { GamepadIndicator } from './components/GamepadIndicator';
 import { Page, OthelloMode } from './types/game';
 import { useRouter, getBackPage } from './utils/router';
 
@@ -84,6 +85,13 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const onGamepadBack = () => handleBack();
+    window.addEventListener('gamepad:back', onGamepadBack);
+    return () => window.removeEventListener('gamepad:back', onGamepadBack);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
   return (
     <>
       {currentPage === 'home' && <HomePage onSelectMode={handleSelectMode} />}
@@ -122,6 +130,8 @@ function App() {
           onCancel={() => setDialogState({ ...dialogState, show: false })}
         />
       )}
+
+      <GamepadIndicator />
     </>
   );
 }
